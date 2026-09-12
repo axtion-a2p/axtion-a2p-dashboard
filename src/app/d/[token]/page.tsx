@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { BrandForm } from "./BrandForm";
 import { CampaignForm } from "./CampaignForm";
 import { Badge } from "@/components/Badge";
+import { BrandKicker } from "@/components/Brand";
 import { stageColor, healthColor, stageLabel } from "@/lib/status";
 
 export default async function SubAccountDashboard({ params }: PageProps<"/d/[token]">) {
@@ -25,6 +26,7 @@ export default async function SubAccountDashboard({ params }: PageProps<"/d/[tok
   return (
     <main className="mx-auto max-w-3xl px-6 py-12">
       <header className="mb-10">
+        <BrandKicker />
         <p className="text-sm text-neutral-500">{subAccount.provider === "TWILIO" ? "Twilio" : "TextGrid"} · A2P 10DLC</p>
         <h1 className="text-2xl font-semibold text-neutral-900">{subAccount.businessName}</h1>
       </header>

@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Axtion A2P 10DLC Dashboard",
-  description: "Submit and monitor A2P 10DLC brand and campaign registration status.",
+  title: "Command Center",
+  description: "Axtion + SparkM's unified Command Center for A2P 10DLC brand and campaign registration status.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

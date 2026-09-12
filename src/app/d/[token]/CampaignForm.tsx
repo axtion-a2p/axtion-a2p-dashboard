@@ -13,10 +13,10 @@ export function CampaignForm({ token }: { token: string }) {
 
   return (
     <form action={formAction} className="space-y-4 border-t border-neutral-200 pt-6">
-      <h3 className="text-sm font-medium text-white">Submit a new campaign</h3>
+      <h3 className="text-sm font-medium text-neutral-900">Submit a new campaign</h3>
 
       <div>
-        <label className="block text-sm text-white" htmlFor="useCase">
+        <label className="block text-sm text-neutral-900" htmlFor="useCase">
           Use case
         </label>
         <select id="useCase" name="useCase" required className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm">
@@ -29,7 +29,7 @@ export function CampaignForm({ token }: { token: string }) {
       </div>
 
       <div>
-        <label className="block text-sm text-white" htmlFor="description">
+        <label className="block text-sm text-neutral-900" htmlFor="description">
           Campaign description
         </label>
         <textarea
@@ -44,7 +44,7 @@ export function CampaignForm({ token }: { token: string }) {
       </div>
 
       <div>
-        <label className="block text-sm text-white" htmlFor="optInDetails">
+        <label className="block text-sm text-neutral-900" htmlFor="optInDetails">
           How do customers opt in?
         </label>
         <textarea
@@ -59,7 +59,7 @@ export function CampaignForm({ token }: { token: string }) {
       </div>
 
       <div>
-        <label className="block text-sm text-white" htmlFor="sampleMessages">
+        <label className="block text-sm text-neutral-900" htmlFor="sampleMessages">
           Sample messages (one per line, up to 5)
         </label>
         <textarea
@@ -72,7 +72,7 @@ export function CampaignForm({ token }: { token: string }) {
         />
       </div>
 
-      <div className="flex gap-6 text-sm text-white">
+      <div className="flex gap-6 text-sm text-neutral-700">
         <label className="flex items-center gap-2">
           <input type="checkbox" name="hasEmbeddedLinks" /> Includes links
         </label>
@@ -86,7 +86,7 @@ export function CampaignForm({ token }: { token: string }) {
       <button
         type="submit"
         disabled={pending}
-        className="rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+        className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-50"
       >
         {pending ? "Submitting…" : "Submit campaign"}
       </button>

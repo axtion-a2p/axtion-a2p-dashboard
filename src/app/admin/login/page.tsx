@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { login, type LoginState } from "./actions";
+import { BrandKicker } from "@/components/Brand";
 
 const initialState: LoginState = {};
 
@@ -10,6 +11,7 @@ export default function AdminLoginPage() {
 
   return (
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-6">
+      <BrandKicker />
       <h1 className="mb-6 text-xl font-semibold text-neutral-900">Admin sign in</h1>
       <form action={formAction} className="space-y-4">
         <input
@@ -24,7 +26,7 @@ export default function AdminLoginPage() {
         <button
           type="submit"
           disabled={pending}
-          className="w-full rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+          className="w-full rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-50"
         >
           {pending ? "Signing in…" : "Sign in"}
         </button>

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { Badge } from "@/components/Badge";
+import { BrandKicker } from "@/components/Brand";
 import { stageColor, healthColor, stageLabel } from "@/lib/status";
 import { syncSubAccount, syncPhoneNumbers, assignNumberToCampaign } from "../actions";
 
@@ -29,6 +30,7 @@ export default async function AdminSubAccountPage({ params }: PageProps<"/admin/
 
       <div className="mt-4 mb-8 flex items-center justify-between">
         <div>
+          <BrandKicker />
           <p className="text-sm text-neutral-500">{subAccount.provider === "TWILIO" ? "Twilio" : "TextGrid"}</p>
           <h1 className="text-2xl font-semibold text-neutral-900">{subAccount.businessName}</h1>
           <p className="text-xs text-neutral-400">/d/{subAccount.token}</p>
@@ -86,7 +88,7 @@ export default async function AdminSubAccountPage({ params }: PageProps<"/admin/
                       </option>
                     ))}
                   </select>
-                  <button className="rounded-md bg-neutral-900 px-3 py-1 text-xs font-medium text-white">Assign</button>
+                  <button className="rounded-md bg-primary px-3 py-1 text-xs font-medium text-white hover:bg-primary-hover">Assign</button>
                 </form>
               )}
             </li>
@@ -98,7 +100,7 @@ export default async function AdminSubAccountPage({ params }: PageProps<"/admin/
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-medium text-neutral-900">Phone numbers</h2>
           <form action={syncPhoneNumbers.bind(null, subAccount.id)}>
-            <button className="text-xs font-medium text-neutral-900 underline">Pull from provider</button>
+            <button className="text-xs font-medium text-primary underline">Pull from provider</button>
           </form>
         </div>
         <ul className="space-y-1 text-sm">

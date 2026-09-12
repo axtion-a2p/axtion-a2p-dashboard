@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { createSubAccount, type SignupState } from "./actions";
+import { BrandKicker } from "@/components/Brand";
 
 const initialState: SignupState = {};
 
@@ -11,6 +12,7 @@ export default function SignupPage() {
   if (state.dashboardUrl) {
     return (
       <main className="mx-auto max-w-lg px-6 py-16">
+        <BrandKicker />
         <h1 className="text-xl font-semibold text-neutral-900">Sub-account created</h1>
         <p className="mt-2 text-sm text-neutral-600">
           Paste this URL into a custom menu link inside this sub-account&apos;s GoHighLevel location. It has no
@@ -19,7 +21,7 @@ export default function SignupPage() {
         <div className="mt-4 rounded-lg border border-neutral-200 bg-neutral-50 p-4">
           <code className="break-all text-sm text-neutral-900">{state.dashboardUrl}</code>
         </div>
-        <a href="/signup" className="mt-6 inline-block text-sm font-medium text-neutral-900 underline">
+        <a href="/signup" className="mt-6 inline-block text-sm font-medium text-primary underline">
           Create another
         </a>
       </main>
@@ -28,6 +30,7 @@ export default function SignupPage() {
 
   return (
     <main className="mx-auto max-w-lg px-6 py-16">
+      <BrandKicker />
       <h1 className="text-xl font-semibold text-neutral-900">New A2P 10DLC sub-account</h1>
       <p className="mt-2 text-sm text-neutral-600">
         Create a dashboard for a client&apos;s app.axtion.ai sub-account so they can submit their 10DLC business
@@ -40,7 +43,7 @@ export default function SignupPage() {
         <Field label="Your contact email" name="contactEmail" type="email" required />
 
         <div>
-          <label className="block text-sm font-medium text-white">Phone provider</label>
+          <label className="block text-sm font-medium text-neutral-900">Phone provider</label>
           <select
             name="provider"
             required
@@ -60,7 +63,7 @@ export default function SignupPage() {
         <button
           type="submit"
           disabled={pending}
-          className="w-full rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+          className="w-full rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-50"
         >
           {pending ? "Creating…" : "Create dashboard link"}
         </button>
@@ -82,7 +85,7 @@ function Field({
 }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-white" htmlFor={name}>
+      <label className="block text-sm font-medium text-neutral-900" htmlFor={name}>
         {label}
       </label>
       <input

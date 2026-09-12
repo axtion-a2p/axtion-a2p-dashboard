@@ -29,7 +29,7 @@ export function BrandForm({ token }: { token: string }) {
   return (
     <form action={formAction} className="space-y-5">
       <fieldset className="space-y-4">
-        <legend className="text-sm font-medium text-white">Business</legend>
+        <legend className="text-sm font-medium text-neutral-900">Business</legend>
         <Field label="Legal business name" name="legalBusinessName" required />
         <Field label="EIN" name="ein" required placeholder="12-3456789" />
         <Select label="Business type" name="businessType" options={BUSINESS_TYPES} />
@@ -38,7 +38,7 @@ export function BrandForm({ token }: { token: string }) {
       </fieldset>
 
       <fieldset className="space-y-4">
-        <legend className="text-sm font-medium text-white">Business address</legend>
+        <legend className="text-sm font-medium text-neutral-900">Business address</legend>
         <Field label="Street" name="street" required />
         <div className="grid grid-cols-2 gap-4">
           <Field label="City" name="city" required />
@@ -51,13 +51,13 @@ export function BrandForm({ token }: { token: string }) {
       </fieldset>
 
       <fieldset className="space-y-4">
-        <legend className="text-sm font-medium text-white">Business contact</legend>
+        <legend className="text-sm font-medium text-neutral-900">Business contact</legend>
         <Field label="Contact email" name="contactEmail" type="email" required />
         <Field label="Contact phone" name="contactPhone" type="tel" required placeholder="+1..." />
       </fieldset>
 
       <fieldset className="space-y-4">
-        <legend className="text-sm font-medium text-white">Authorized representative</legend>
+        <legend className="text-sm font-medium text-neutral-900">Authorized representative</legend>
         <div className="grid grid-cols-2 gap-4">
           <Field label="First name" name="repFirstName" required />
           <Field label="Last name" name="repLastName" required />
@@ -73,7 +73,7 @@ export function BrandForm({ token }: { token: string }) {
       <button
         type="submit"
         disabled={pending}
-        className="rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+        className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-50"
       >
         {pending ? "Submitting…" : "Submit brand for review"}
       </button>
@@ -98,7 +98,7 @@ function Field({
 }) {
   return (
     <div>
-      <label className="block text-sm text-white" htmlFor={name}>
+      <label className="block text-sm text-neutral-900" htmlFor={name}>
         {label}
       </label>
       <input
@@ -117,7 +117,7 @@ function Field({
 function Select({ label, name, options }: { label: string; name: string; options: string[] }) {
   return (
     <div>
-      <label className="block text-sm text-white" htmlFor={name}>
+      <label className="block text-sm text-neutral-900" htmlFor={name}>
         {label}
       </label>
       <select id={name} name={name} required className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm">
