@@ -40,7 +40,7 @@ export default function SignupPage() {
         <Field label="Your contact email" name="contactEmail" type="email" required />
 
         <div>
-          <label className="block text-sm font-medium text-neutral-900">Phone provider</label>
+          <label className="block text-sm font-medium text-white">Phone provider</label>
           <select
             name="provider"
             required
@@ -82,7 +82,7 @@ function Field({
 }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-neutral-900" htmlFor={name}>
+      <label className="block text-sm font-medium text-white" htmlFor={name}>
         {label}
       </label>
       <input
