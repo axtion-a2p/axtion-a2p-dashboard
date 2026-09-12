@@ -2,7 +2,7 @@ export type BrandInput = {
   legalBusinessName: string;
   ein: string;
   businessType: string; // Twilio business_type enum, e.g. "Private Corporation", "Sole Proprietor"
-  vertical: string; // Twilio business_industry enum, e.g. "REAL_ESTATE", "HEALTHCARE"
+  vertical: string; // Twilio business_industry / TextGrid vertical enum, e.g. "REAL_ESTATE", "HEALTHCARE"
   website?: string;
   street: string;
   city: string;
@@ -19,6 +19,18 @@ export type BrandInput = {
     businessTitle: string;
     jobPosition: string; // Twilio job_position enum: "Director", "GM", "VP", "CEO", "CFO", "General Counsel", "Other"
   };
+
+  // TextGrid-only fields below. Twilio's provider ignores all of these. When
+  // omitted, the TextGrid provider derives sensible defaults (see
+  // textgridProvider.ts) so a submission still works without a UI change.
+  mobilePhone?: string; // required by TCR for Sole Proprietor OTP verification
+  entityType?: "SOLE_PROPRIETOR" | "PRIVATE_PROFIT" | "PUBLIC_PROFIT" | "NON_PROFIT" | "GOVERNMENT";
+  brandRelationship?: "BASIC_ACCOUNT" | "SMALL_ACCOUNT" | "MEDIUM_ACCOUNT" | "LARGE_ACCOUNT" | "KEY_ACCOUNT";
+  stockSymbol?: string;
+  stockExchange?: string;
+  altBusinessId?: string;
+  altBusinessIdType?: string;
+  referenceId?: string;
 };
 
 export type BrandStatus = {
@@ -37,6 +49,21 @@ export type CampaignInput = {
   optInImageUrl?: string;
   hasEmbeddedLinks: boolean;
   hasEmbeddedPhone: boolean;
+
+  // TextGrid-only fields below. Twilio's provider ignores all of these. When
+  // omitted, the TextGrid provider derives sensible defaults (see
+  // textgridProvider.ts) so a submission still works without a UI change.
+  subUsecases?: string[];
+  termsAndConditionsLink?: string;
+  privacyPolicyLink?: string;
+  helpKeywords?: string;
+  helpMessage?: string;
+  optinKeywords?: string;
+  optinMessage?: string;
+  optoutKeywords?: string;
+  optoutMessage?: string;
+  referenceId?: string;
+  autoRenewal?: boolean;
 };
 
 export type CampaignStatus = {

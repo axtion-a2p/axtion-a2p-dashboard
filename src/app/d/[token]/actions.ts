@@ -187,11 +187,18 @@ export async function submitCampaign(token: string, _prev: FormState, formData: 
 
     const status = await provider.submitCampaign(brand.providerBrandId, input);
 
+    // TextGrid has no separate "Messaging Service" resource — campaigns attach
+    // directly to phone numbers, so we store the campaignId itself in this
+    // column for TextGrid rows (see textgridProvider.ts's getCampaignStatus /
+    // assignNumberToMessagingService notes) instead of the Twilio-only
+    // Messaging Service sid.
+    const messagingServiceSid = subAccount.provider === "TEXTGRID" ? status.providerCampaignId : service.sid;
+
     await db.campaign.create({
       data: {
         subAccountId: subAccount.id,
         providerCampaignId: status.providerCampaignId,
-        messagingServiceSid: service.sid,
+        messagingServiceSid,
         useCase: d.useCase,
         description: d.description,
         sampleMessages,

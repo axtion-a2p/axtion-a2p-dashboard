@@ -1,10 +1,6 @@
-// Shared implementation of the Twilio-shaped A2P 10DLC + Messaging REST API.
-// Used for both Twilio (fully verified against Twilio's current docs, Sept 2026)
-// and TextGrid (same shapes, since TextGrid documents itself as a drop-in
-// replacement reachable by swapping api.twilio.com for api.textgrid.com — the
-// trusthub./messaging. host split below is NOT independently confirmed for
-// TextGrid and should be verified against a real TextGrid account/support
-// before relying on it; each host is overridable via env var for that reason).
+// Twilio's A2P 10DLC + Messaging REST API implementation (verified against
+// Twilio's current docs, Sept 2026). TextGrid has its own, unrelated
+// implementation — see textgridProvider.ts.
 //
 // Reference (fetched live while building this):
 // https://www.twilio.com/docs/messaging/compliance/a2p-10dlc/onboarding-isv-api
@@ -24,8 +20,12 @@ import type {
 const A2P_POLICY_SID = "RNdfbf3fae0e1107f8aded0e7cead80bf5";
 
 export type TenDlcProviderConfig = {
+  /** Account SID (AC...) used in REST URL paths. */
   accountSid: string;
-  authToken: string;
+  /** Basic Auth username: either the same Account SID (classic auth) or an API Key SID (SK...). */
+  authUsername: string;
+  /** Basic Auth password: the Auth Token (classic) or API Key Secret. */
+  authPassword: string;
   apiBase: string; // core REST API (Addresses, IncomingPhoneNumbers)
   trustHubBase: string; // CustomerProfiles, EndUsers, SupportingDocuments
   messagingBase: string; // Services, BrandRegistrations, Usa2p
@@ -39,7 +39,7 @@ export class TenDlcProvider implements ProviderAdapter {
   private client: RestClient;
 
   constructor(private config: TenDlcProviderConfig) {
-    this.client = new RestClient(config.accountSid, config.authToken);
+    this.client = new RestClient(config.authUsername, config.authPassword);
   }
 
   private async createCustomerProfile(friendlyName: string) {

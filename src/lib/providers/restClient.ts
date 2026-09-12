@@ -1,13 +1,15 @@
-// Generic REST client for the Twilio-shaped A2P 10DLC APIs.
+// REST client for Twilio's Trust Hub / Messaging / core APIs (form-urlencoded
+// bodies, HTTP Basic Auth). TextGrid's actual 10DLC API is a separate, bespoke
+// JSON+Bearer API — see textgridClient.ts / textgridProvider.ts — it does NOT
+// share this client despite superficially resembling Twilio's core REST API
+// (Accounts/.../IncomingPhoneNumbers.json) for non-10DLC endpoints.
 //
-// Both Twilio and TextGrid are driven through this client. TextGrid advertises
-// itself as a drop-in-compatible REST API (same Account SID / Auth Token auth,
-// same resource shapes) reachable by swapping the base host from
-// api.twilio.com to api.textgrid.com. Twilio splits its API across a few
-// hosts (api./trusthub./messaging.twilio.com); we assume TextGrid mirrors
-// that host layout, but that specific assumption is UNVERIFIED and each host
-// is independently overridable via env vars. If a TextGrid call 404s, check
-// the corresponding *_BASE env var first before assuming the payload is wrong.
+// Twilio supports two Basic Auth credential pairs: the classic
+// {AccountSid}:{AuthToken}, or an API Key {ApiKeySid}:{ApiKeySecret} (SK.../
+// secret). Either pair works here — pass whichever two values should go in
+// the Basic Auth header. The Account SID used in REST URL paths is tracked
+// separately by the caller (TenDlcProviderConfig.accountSid) since it's
+// always the AC... sid regardless of which auth pair is used.
 
 export class ApiError extends Error {
   status: number;
@@ -22,12 +24,12 @@ export class ApiError extends Error {
 
 export class RestClient {
   constructor(
-    private accountSid: string,
-    private authToken: string
+    private authUsername: string,
+    private authPassword: string
   ) {}
 
   private authHeader() {
-    return "Basic " + Buffer.from(`${this.accountSid}:${this.authToken}`).toString("base64");
+    return "Basic " + Buffer.from(`${this.authUsername}:${this.authPassword}`).toString("base64");
   }
 
   async request<T = unknown>(
