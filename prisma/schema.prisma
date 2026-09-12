@@ -1,0 +1,181 @@
+// Data model for the 10DLC A2P registration & monitoring dashboard.
+// Two providers are supported per sub-account: Twilio and TextGrid.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Provider {
+  TWILIO
+  TEXTGRID
+}
+
+enum BrandStage {
+  NOT_SUBMITTED
+  PENDING_REVIEW
+  APPROVED
+  FAILED
+}
+
+enum CampaignStage {
+  NOT_SUBMITTED
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+enum CampaignHealth {
+  UNKNOWN
+  HEALTHY
+  AT_RISK
+  BLOCKED
+}
+
+enum PhoneStatus {
+  UNASSIGNED
+  PENDING_ASSIGNMENT
+  ASSIGNED
+  FAILED
+}
+
+model SubAccount {
+  id              String   @id @default(cuid())
+  token           String   @unique // powers the unguessable /d/[token] URL
+  businessName    String
+  contactEmail    String?
+  contactName     String?
+  provider        Provider
+
+  // Which underlying messaging account this sub-account's numbers/campaigns live under.
+  // Falls back to the platform-wide TWILIO_*/TEXTGRID_* env credentials when unset,
+  // which is the common case for a single reseller account with per-client Messaging Services.
+  // Set these only when a client has their own dedicated Twilio/TextGrid (sub)account.
+  // NOTE: stored in plaintext for now — before onboarding customers with their own
+  // credentials at scale, put field-level encryption in front of these two columns.
+  providerAccountSid   String? // Twilio Account SID or TextGrid Account SID
+  providerAuthToken    String? // Twilio Auth Token or TextGrid Auth Token
+
+  // GoHighLevel context (app.axtion.ai whitelabel sub-account)
+  ghlLocationId   String?
+  ghlLocationName String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  brand         Brand?
+  campaigns     Campaign[]
+  phoneNumbers  PhoneNumber[]
+  statusEvents  StatusEvent[]
+
+  @@index([provider])
+}
+
+model Brand {
+  id                String     @id @default(cuid())
+  subAccountId      String     @unique
+  subAccount        SubAccount @relation(fields: [subAccountId], references: [id], onDelete: Cascade)
+
+  providerBrandId   String? // Twilio Brand SID (BNxxx) or TextGrid equivalent
+
+  legalBusinessName String
+  ein               String?
+  businessType      String?
+  vertical          String?
+  website           String?
+  street            String?
+  city              String?
+  state             String?
+  postalCode        String?
+  country           String?
+  contactEmail      String?
+  contactPhone      String?
+
+  repFirstName      String?
+  repLastName       String?
+  repEmail          String?
+  repPhone          String?
+  repBusinessTitle  String?
+  repJobPosition    String?
+
+  stage             BrandStage @default(NOT_SUBMITTED)
+  failureReason     String?
+  submittedAt       DateTime?
+  approvedAt        DateTime?
+  rawPayload        Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Campaign {
+  id                 String        @id @default(cuid())
+  subAccountId       String
+  subAccount         SubAccount    @relation(fields: [subAccountId], references: [id], onDelete: Cascade)
+
+  providerCampaignId String? // Twilio Campaign SID (CU/QE) or TextGrid equivalent
+  messagingServiceSid String? // Twilio Messaging Service SID this campaign is bound to
+
+  useCase            String
+  description        String
+  sampleMessages     Json    // string[]
+  optInDetails       String?
+  optInImageUrl      String?
+  hasEmbeddedLinks   Boolean @default(false)
+  hasEmbeddedPhone   Boolean @default(false)
+
+  stage              CampaignStage  @default(NOT_SUBMITTED)
+  health             CampaignHealth @default(UNKNOWN)
+  throughputPerMinute Int?
+  failureReason      String?
+  submittedAt        DateTime?
+  approvedAt         DateTime?
+  rawPayload         Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  phoneNumbers PhoneNumber[]
+
+  @@index([subAccountId])
+}
+
+model PhoneNumber {
+  id             String       @id @default(cuid())
+  subAccountId   String
+  subAccount     SubAccount   @relation(fields: [subAccountId], references: [id], onDelete: Cascade)
+  campaignId     String?
+  campaign       Campaign?    @relation(fields: [campaignId], references: [id])
+
+  e164           String       @unique
+  providerSid    String? // Twilio PN SID or TextGrid equivalent
+  status         PhoneStatus  @default(UNASSIGNED)
+  purchasedAt    DateTime?
+  assignedAt     DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([subAccountId])
+  @@index([campaignId])
+}
+
+model StatusEvent {
+  id           String     @id @default(cuid())
+  subAccountId String
+  subAccount   SubAccount @relation(fields: [subAccountId], references: [id], onDelete: Cascade)
+
+  entityType String // BRAND | CAMPAIGN | PHONE_NUMBER | SUB_ACCOUNT
+  entityId   String?
+  message    String
+  actor      String? // "system" | "admin" | provider name
+
+  createdAt DateTime @default(now())
+
+  @@index([subAccountId, createdAt])
+}
