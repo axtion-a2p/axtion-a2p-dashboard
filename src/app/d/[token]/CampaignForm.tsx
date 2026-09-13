@@ -72,6 +72,80 @@ export function CampaignForm({ token }: { token: string }) {
         />
       </div>
 
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm text-neutral-900" htmlFor="termsAndConditionsLink">
+            Terms &amp; Conditions URL
+          </label>
+          <input
+            id="termsAndConditionsLink"
+            name="termsAndConditionsLink"
+            type="url"
+            required
+            placeholder="https://example.com/terms"
+            className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
+          />
+        </div>
+        <div>
+          <label className="block text-sm text-neutral-900" htmlFor="privacyPolicyLink">
+            Privacy Policy URL
+          </label>
+          <input
+            id="privacyPolicyLink"
+            name="privacyPolicyLink"
+            type="url"
+            required
+            placeholder="https://example.com/privacy"
+            className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
+          />
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm text-neutral-900" htmlFor="optinMessage">
+          Opt-in confirmation message
+        </label>
+        <textarea
+          id="optinMessage"
+          name="optinMessage"
+          required
+          rows={2}
+          minLength={20}
+          placeholder="e.g. You are now subscribed to [Brand] alerts. Msg frequency may vary. Reply HELP for help, STOP to opt out. Msg&Data rates may apply."
+          className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm text-neutral-900" htmlFor="optoutMessage">
+          Opt-out confirmation message
+        </label>
+        <textarea
+          id="optoutMessage"
+          name="optoutMessage"
+          required
+          rows={2}
+          minLength={20}
+          placeholder="e.g. You have been unsubscribed from [Brand] alerts and will not receive further messages. Reply START to resubscribe."
+          className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm text-neutral-900" htmlFor="helpMessage">
+          Help message
+        </label>
+        <textarea
+          id="helpMessage"
+          name="helpMessage"
+          required
+          rows={2}
+          minLength={20}
+          placeholder="e.g. [Brand] Support: Reply STOP to unsubscribe. Contact us at support@example.com for help. Msg&Data rates may apply."
+          className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
+        />
+      </div>
+
       <div className="flex gap-6 text-sm text-neutral-700">
         <label className="flex items-center gap-2">
           <input type="checkbox" name="hasEmbeddedLinks" /> Includes links

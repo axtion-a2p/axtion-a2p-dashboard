@@ -17,6 +17,27 @@ export class ApiError extends Error {
   }
 }
 
+// TextGrid's error responses are inconsistent across endpoints: seen so far are
+// {"message": "..."}, {"error": "..."}, and {"Error": "..."} where the value
+// is itself a JSON-encoded string like '[{"code":501,"description":"...","fields":[...]}]'.
+function extractErrorMessage(json: unknown): string | undefined {
+  if (typeof json !== "object" || json === null) return undefined;
+  const obj = json as Record<string, unknown>;
+  const raw = obj.message ?? obj.Message ?? obj.error ?? obj.Error;
+  if (typeof raw !== "string") return undefined;
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      return parsed
+        .map((e) => (e?.description ? `${e.description}${e.fields ? ` (${e.fields.join(", ")})` : ""}` : JSON.stringify(e)))
+        .join("; ");
+    }
+  } catch {
+    // not JSON — just a plain string message
+  }
+  return raw;
+}
+
 export class TextGridClient {
   constructor(
     private accountSid: string,
@@ -52,9 +73,7 @@ export class TextGridClient {
     }
 
     if (!res.ok) {
-      const message =
-        (json as { message?: string })?.message ?? `Request to ${url} failed with ${res.status}`;
-      throw new ApiError(message, res.status, json);
+      throw new ApiError(extractErrorMessage(json) ?? `Request to ${url} failed with ${res.status}`, res.status, json);
     }
 
     return json as T;

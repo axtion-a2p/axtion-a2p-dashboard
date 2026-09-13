@@ -151,6 +151,11 @@ const campaignSchema = z.object({
   sampleMessages: z.string().min(1),
   hasEmbeddedLinks: z.string().optional(),
   hasEmbeddedPhone: z.string().optional(),
+  termsAndConditionsLink: z.string().url("Enter a valid URL"),
+  privacyPolicyLink: z.string().url("Enter a valid URL"),
+  optinMessage: z.string().min(20, "Opt-in confirmation must be at least 20 characters"),
+  optoutMessage: z.string().min(20, "Opt-out confirmation must be at least 20 characters"),
+  helpMessage: z.string().min(20, "Help message must be at least 20 characters"),
 });
 
 export async function submitCampaign(token: string, _prev: FormState, formData: FormData): Promise<FormState> {
@@ -183,6 +188,11 @@ export async function submitCampaign(token: string, _prev: FormState, formData: 
       optInDetails: d.optInDetails,
       hasEmbeddedLinks: d.hasEmbeddedLinks === "on",
       hasEmbeddedPhone: d.hasEmbeddedPhone === "on",
+      termsAndConditionsLink: d.termsAndConditionsLink,
+      privacyPolicyLink: d.privacyPolicyLink,
+      optinMessage: d.optinMessage,
+      optoutMessage: d.optoutMessage,
+      helpMessage: d.helpMessage,
     };
 
     const status = await provider.submitCampaign(brand.providerBrandId, input);
