@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { destroyAdminSession } from "@/lib/auth";
 import { getProvider } from "@/lib/providers";
 import { generateUniqueSubdomain } from "@/lib/generateSubdomain";
+import { subdomainUrl } from "@/lib/subdomain";
 
 export async function logout() {
   await destroyAdminSession();
@@ -125,7 +126,7 @@ export async function assignSubdomain(subAccountId: string) {
 
   const subdomain = await generateUniqueSubdomain(subAccount.businessName);
   await db.subAccount.update({ where: { id: subAccountId }, data: { subdomain } });
-  await logEvent(subAccountId, "SUB_ACCOUNT", `Compliance site assigned: ${subdomain}.lnxnow.com`);
+  await logEvent(subAccountId, "SUB_ACCOUNT", `Compliance site assigned: ${subdomainUrl(subdomain)}`);
 
   revalidatePath(`/admin/${subAccountId}`);
   revalidatePath("/admin");

@@ -53,7 +53,7 @@ model SubAccount {
   provider        Provider
 
   // Slug for this sub-account's compliance micro-site, e.g. "deancapitalllc"
-  // serves https://deancapitalllc.lnxnow.com (landing/terms/privacy/optin).
+  // serves https://deancapitalllc.axtion.app (landing/terms/privacy/optin).
   // Auto-generated from businessName at signup; used as the
   // termsAndConditionsLink/privacyPolicyLink host for campaign submissions.
   subdomain       String?  @unique
@@ -188,7 +188,7 @@ model StatusEvent {
 }
 
 // A record of consent collected through a sub-account's public opt-in form
-// (https://{subdomain}.lnxnow.com/optin). consentText is a snapshot of the
+// (https://{subdomain}.axtion.app/optin). consentText is a snapshot of the
 // exact disclosure shown at signup time, kept verbatim for compliance
 // records even if the template copy changes later.
 model OptInSubmission {

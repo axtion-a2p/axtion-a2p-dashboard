@@ -4,7 +4,7 @@
 // generation lives in generateSubdomain.ts instead.
 
 /** Root domain the per-client compliance micro-sites are hosted under. */
-export const SUBDOMAIN_ROOT = "lnxnow.com";
+export const SUBDOMAIN_ROOT = "axtion.app";
 
 export function slugify(businessName: string): string {
   const slug = businessName
