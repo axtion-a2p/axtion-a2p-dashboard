@@ -52,6 +52,12 @@ model SubAccount {
   contactName     String?
   provider        Provider
 
+  // Slug for this sub-account's compliance micro-site, e.g. "deancapitalllc"
+  // serves https://deancapitalllc.lnxnow.com (landing/terms/privacy/optin).
+  // Auto-generated from businessName at signup; used as the
+  // termsAndConditionsLink/privacyPolicyLink host for campaign submissions.
+  subdomain       String?  @unique
+
   // Which underlying messaging account this sub-account's numbers/campaigns live under.
   // Falls back to the platform-wide TWILIO_*/TEXTGRID_* env credentials when unset,
   // which is the common case for a single reseller account with per-client Messaging Services.
@@ -72,6 +78,7 @@ model SubAccount {
   campaigns     Campaign[]
   phoneNumbers  PhoneNumber[]
   statusEvents  StatusEvent[]
+  optInSubmissions OptInSubmission[]
 
   @@index([provider])
 }
@@ -174,6 +181,24 @@ model StatusEvent {
   entityId   String?
   message    String
   actor      String? // "system" | "admin" | provider name
+
+  createdAt DateTime @default(now())
+
+  @@index([subAccountId, createdAt])
+}
+
+// A record of consent collected through a sub-account's public opt-in form
+// (https://{subdomain}.lnxnow.com/optin). consentText is a snapshot of the
+// exact disclosure shown at signup time, kept verbatim for compliance
+// records even if the template copy changes later.
+model OptInSubmission {
+  id           String     @id @default(cuid())
+  subAccountId String
+  subAccount   SubAccount @relation(fields: [subAccountId], references: [id], onDelete: Cascade)
+
+  name        String
+  phone       String
+  consentText String
 
   createdAt DateTime @default(now())
 

@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { generateSubAccountToken } from "@/lib/auth";
+import { generateUniqueSubdomain } from "@/lib/generateSubdomain";
 
 const schema = z.object({
   businessName: z.string().min(1, "Business name is required"),
@@ -33,6 +34,7 @@ export async function createSubAccount(_prev: SignupState, formData: FormData): 
   }
 
   const token = generateSubAccountToken();
+  const subdomain = await generateUniqueSubdomain(parsed.data.businessName);
 
   await db.subAccount.create({
     data: {
@@ -41,6 +43,7 @@ export async function createSubAccount(_prev: SignupState, formData: FormData): 
       contactName: parsed.data.contactName,
       contactEmail: parsed.data.contactEmail,
       provider: parsed.data.provider,
+      subdomain,
       ghlLocationId: parsed.data.ghlLocationId,
       ghlLocationName: parsed.data.ghlLocationName,
       statusEvents: {

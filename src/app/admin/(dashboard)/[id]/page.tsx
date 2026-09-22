@@ -4,7 +4,8 @@ import { db } from "@/lib/db";
 import { Badge } from "@/components/Badge";
 import { BrandKicker } from "@/components/Brand";
 import { stageColor, healthColor, stageLabel } from "@/lib/status";
-import { syncSubAccount, syncPhoneNumbers, assignNumberToCampaign } from "../actions";
+import { subdomainUrl } from "@/lib/subdomain";
+import { syncSubAccount, syncPhoneNumbers, assignNumberToCampaign, assignSubdomain } from "../actions";
 
 export default async function AdminSubAccountPage({ params }: PageProps<"/admin/[id]">) {
   const { id } = await params;
@@ -34,6 +35,20 @@ export default async function AdminSubAccountPage({ params }: PageProps<"/admin/
           <p className="text-sm text-neutral-500">{subAccount.provider === "TWILIO" ? "Twilio" : "TextGrid"}</p>
           <h1 className="text-2xl font-semibold text-neutral-900">{subAccount.businessName}</h1>
           <p className="text-xs text-neutral-400">/d/{subAccount.token}</p>
+          {subAccount.subdomain ? (
+            <a
+              href={subdomainUrl(subAccount.subdomain)}
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs text-primary underline"
+            >
+              {subdomainUrl(subAccount.subdomain)}
+            </a>
+          ) : (
+            <form action={assignSubdomain.bind(null, subAccount.id)}>
+              <button className="text-xs font-medium text-primary underline">Assign compliance site</button>
+            </form>
+          )}
         </div>
         <form action={syncSubAccount.bind(null, subAccount.id)}>
           <button className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm font-medium text-neutral-900">

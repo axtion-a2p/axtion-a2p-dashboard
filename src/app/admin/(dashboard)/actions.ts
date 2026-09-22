@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { destroyAdminSession } from "@/lib/auth";
 import { getProvider } from "@/lib/providers";
+import { generateUniqueSubdomain } from "@/lib/generateSubdomain";
 
 export async function logout() {
   await destroyAdminSession();
@@ -115,6 +116,19 @@ export async function assignNumberToCampaign(subAccountId: string, formData: For
   }
 
   revalidatePath(`/admin/${subAccountId}`);
+}
+
+/** Backfills a compliance-site subdomain for sub-accounts created before this feature existed. */
+export async function assignSubdomain(subAccountId: string) {
+  const subAccount = await db.subAccount.findUniqueOrThrow({ where: { id: subAccountId } });
+  if (subAccount.subdomain) return;
+
+  const subdomain = await generateUniqueSubdomain(subAccount.businessName);
+  await db.subAccount.update({ where: { id: subAccountId }, data: { subdomain } });
+  await logEvent(subAccountId, "SUB_ACCOUNT", `Compliance site assigned: ${subdomain}.lnxnow.com`);
+
+  revalidatePath(`/admin/${subAccountId}`);
+  revalidatePath("/admin");
 }
 
 function errMessage(err: unknown) {

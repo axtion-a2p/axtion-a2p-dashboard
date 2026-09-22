@@ -5,6 +5,7 @@ import { CampaignForm } from "./CampaignForm";
 import { Badge } from "@/components/Badge";
 import { BrandKicker } from "@/components/Brand";
 import { stageColor, healthColor, stageLabel } from "@/lib/status";
+import { subdomainUrl } from "@/lib/subdomain";
 
 export default async function SubAccountDashboard({ params }: PageProps<"/d/[token]">) {
   const { token } = await params;
@@ -29,6 +30,14 @@ export default async function SubAccountDashboard({ params }: PageProps<"/d/[tok
         <BrandKicker />
         <p className="text-sm text-neutral-500">{subAccount.provider === "TWILIO" ? "Twilio" : "TextGrid"} · A2P 10DLC</p>
         <h1 className="text-2xl font-semibold text-neutral-900">{subAccount.businessName}</h1>
+        {subAccount.subdomain && (
+          <p className="mt-1 text-sm text-neutral-500">
+            Compliance site:{" "}
+            <a href={subdomainUrl(subAccount.subdomain)} target="_blank" rel="noreferrer" className="text-primary underline">
+              {subdomainUrl(subAccount.subdomain)}
+            </a>
+          </p>
+        )}
       </header>
 
       <section className="mb-10 rounded-xl border border-neutral-200 p-6">
@@ -93,7 +102,7 @@ export default async function SubAccountDashboard({ params }: PageProps<"/d/[tok
         </ul>
 
         {brand?.stage === "APPROVED" ? (
-          <CampaignForm token={token} />
+          <CampaignForm token={token} businessName={subAccount.businessName} subdomain={subAccount.subdomain} />
         ) : (
           <p className="text-sm text-neutral-500">Your brand must be approved before you can submit a campaign.</p>
         )}
