@@ -10,7 +10,7 @@ export default async function SiteLayout({ children, params }: LayoutProps<"/sit
   return (
     <div className="flex min-h-screen flex-col bg-slate-50">
       <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-2xl items-center justify-between px-6 py-5">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-5">
           <Link href={`/`} className="flex items-center gap-3">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-900 text-sm font-semibold text-white">
               {initial}
@@ -30,8 +30,8 @@ export default async function SiteLayout({ children, params }: LayoutProps<"/sit
           </nav>
         </div>
       </header>
-      <main className="mx-auto w-full max-w-2xl flex-1 px-6 py-12">{children}</main>
-      <footer className="mx-auto w-full max-w-2xl px-6 pb-10 text-xs text-slate-400">
+      <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-12">{children}</main>
+      <footer className="mx-auto w-full max-w-5xl px-6 pb-10 text-xs text-slate-400">
         © {new Date().getFullYear()} {subAccount.businessName}. All rights reserved.
       </footer>
     </div>

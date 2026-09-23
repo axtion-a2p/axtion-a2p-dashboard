@@ -3,10 +3,19 @@
 import { useActionState } from "react";
 import Link from "next/link";
 import { submitOptIn, type OptInState } from "./actions";
+import { OPT_IN_CATEGORY_FIELD_NAME, optInStatement, type OptInCategory } from "@/lib/optInCategories";
 
 const initialState: OptInState = {};
 
-export function OptInForm({ subdomain, businessName }: { subdomain: string; businessName: string }) {
+export function OptInForm({
+  subdomain,
+  businessName,
+  categories,
+}: {
+  subdomain: string;
+  businessName: string;
+  categories: OptInCategory[];
+}) {
   const action = submitOptIn.bind(null, subdomain);
   const [state, formAction, pending] = useActionState(action, initialState);
 
@@ -52,22 +61,30 @@ export function OptInForm({ subdomain, businessName }: { subdomain: string; busi
           className="mt-1.5 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-slate-900 focus:ring-1 focus:ring-slate-900"
         />
       </div>
-      <label className="flex items-start gap-2.5 text-sm text-slate-600">
-        <input type="checkbox" name="consent" required className="mt-1 h-4 w-4 accent-slate-900" />
-        <span>
-          By checking this box and submitting this form, I agree to receive SMS text messages from{" "}
-          {businessName}. Message frequency may vary. Message and data rates may apply. Reply STOP to opt out
-          at any time, or HELP for help. See our{" "}
-          <Link href={`/privacy`} className="font-medium text-slate-900 underline">
-            Privacy Policy
-          </Link>{" "}
-          and{" "}
-          <Link href={`/terms`} className="font-medium text-slate-900 underline">
-            Terms of Service
-          </Link>
-          .
-        </span>
-      </label>
+
+      <div className="space-y-3">
+        {categories.map((category) => (
+          <label key={category} className="flex items-start gap-2.5 text-sm text-slate-600">
+            <input
+              type="checkbox"
+              name={OPT_IN_CATEGORY_FIELD_NAME(category)}
+              required={categories.length === 1}
+              className="mt-1 h-4 w-4 accent-slate-900"
+            />
+            <span>
+              {optInStatement(category, businessName)} See our{" "}
+              <Link href={`/privacy`} className="font-medium text-slate-900 underline">
+                Privacy Policy
+              </Link>{" "}
+              and{" "}
+              <Link href={`/terms`} className="font-medium text-slate-900 underline">
+                Terms of Service
+              </Link>
+              .
+            </span>
+          </label>
+        ))}
+      </div>
 
       {state.error && <p className="text-sm text-red-600">{state.error}</p>}
 

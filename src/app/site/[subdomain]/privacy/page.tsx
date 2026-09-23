@@ -6,7 +6,7 @@ export default async function PrivacyPage({ params }: PageProps<"/site/[subdomai
   const name = subAccount.businessName;
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm sm:p-10">
+    <div className="mx-auto max-w-2xl rounded-2xl border border-slate-200 bg-white p-8 shadow-sm sm:p-10">
       <div className="prose prose-sm max-w-none space-y-4 text-slate-700">
         <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Privacy Policy</h1>
         <p className="text-slate-500">Last updated {new Date().toLocaleDateString()}</p>
