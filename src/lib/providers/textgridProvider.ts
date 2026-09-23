@@ -181,6 +181,42 @@ export class TextGridProvider implements ProviderAdapter {
     return this.mapCampaignStatus(campaign);
   }
 
+  /** Edits an already-submitted campaign in place (e.g. filling in previously-missing sample messages) rather than creating a new one. Same field set as submitCampaign, PUT to the existing campaign's resource. */
+  async updateCampaign(providerCampaignId: string, input: CampaignInput): Promise<CampaignStatus> {
+    const samples = input.sampleMessages.slice(0, 5);
+    const campaign = await this.client.request<TextGridCampaign>(
+      "PUT",
+      this.url(`/campaigns/campaign/${providerCampaignId}`),
+      {
+        usecase: input.useCase,
+        subUsecases: input.subUsecases,
+        description: input.description,
+        embeddedLink: input.hasEmbeddedLinks,
+        embeddedPhone: input.hasEmbeddedPhone,
+        subscriberOptin: true,
+        subscriberOptout: true,
+        subscriberHelp: true,
+        sample1: samples[0],
+        sample2: samples[1],
+        sample3: samples[2],
+        sample4: samples[3],
+        sample5: samples[4],
+        messageFlow: input.optInDetails,
+        termsAndConditionsLink: input.termsAndConditionsLink,
+        privacyPolicyLink: input.privacyPolicyLink,
+        helpKeywords: input.helpKeywords ?? "HELP",
+        helpMessage: input.helpMessage,
+        optinKeywords: input.optinKeywords ?? "START",
+        optinMessage: input.optinMessage,
+        optoutKeywords: input.optoutKeywords ?? "STOP",
+        optoutMessage: input.optoutMessage,
+        referenceId: input.referenceId,
+        autoRenewal: input.autoRenewal ?? true,
+      }
+    );
+    return this.mapCampaignStatus(campaign);
+  }
+
   private mapCampaignStatus(campaign: TextGridCampaign): CampaignStatus {
     const stage =
       campaign.campaignEnabled === false

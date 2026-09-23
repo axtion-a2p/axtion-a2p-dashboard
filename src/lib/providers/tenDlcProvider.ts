@@ -241,6 +241,29 @@ export class TenDlcProvider implements ProviderAdapter {
     return this.mapCampaignStatus(campaign);
   }
 
+  /**
+   * Twilio's Usa2p resource has no documented general-purpose update endpoint —
+   * most fields are immutable post-submission by design. This POSTs to the
+   * existing campaign's own resource (Twilio's convention elsewhere for partial
+   * updates, e.g. CustomerProfile status), which as of this writing only
+   * actually accepts new message samples. Treat other field changes here as
+   * best-effort — Twilio may reject them, surfaced via the normal ApiError.
+   */
+  async updateCampaign(providerCampaignId: string, input: CampaignInput): Promise<CampaignStatus> {
+    const campaign = await this.client.request<{
+      sid: string;
+      campaign_status: string;
+      errors?: unknown[];
+    }>("POST", `${this.config.messagingBase}/v1/Services/${input.messagingServiceSid}/Compliance/Usa2p/${providerCampaignId}`, {
+      Description: input.description,
+      MessageFlow: input.optInDetails ?? "Customer opts in during checkout or by texting the business's number.",
+      HasEmbeddedLinks: input.hasEmbeddedLinks,
+      HasEmbeddedPhone: input.hasEmbeddedPhone,
+      MessageSamples: input.sampleMessages.slice(0, 5),
+    });
+    return this.mapCampaignStatus(campaign);
+  }
+
   // UsAppToPerson campaign_status per Twilio: PENDING, IN_PROGRESS, VERIFIED, FAILED, and
   // rarely SUSPENDED (post-approval enforcement action).
   private mapCampaignStatus(campaign: { sid: string; campaign_status: string; errors?: unknown[] }): CampaignStatus {

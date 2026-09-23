@@ -135,6 +135,11 @@ model Campaign {
   optInImageUrl      String?
   hasEmbeddedLinks   Boolean @default(false)
   hasEmbeddedPhone   Boolean @default(false)
+  termsAndConditionsLink String?
+  privacyPolicyLink      String?
+  optinMessage           String?
+  optoutMessage          String?
+  helpMessage            String?
 
   stage              CampaignStage  @default(NOT_SUBMITTED)
   health             CampaignHealth @default(UNKNOWN)

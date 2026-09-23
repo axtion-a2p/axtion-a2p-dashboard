@@ -3,10 +3,9 @@
 import { useActionState, useRef } from "react";
 import { submitCampaign, type FormState } from "./actions";
 import { marketingCampaignTemplate } from "@/lib/campaignTemplate";
+import { CAMPAIGN_USE_CASES } from "@/lib/campaignUseCases";
 
 const initialState: FormState = {};
-
-const USE_CASES = ["MIXED", "MARKETING", "CUSTOMER_CARE", "ACCOUNT_NOTIFICATION", "APPOINTMENT_REMINDER", "DELIVERY_NOTIFICATION", "TWO_FACTOR_AUTHENTICATION"];
 
 export function CampaignForm({
   token,
@@ -70,7 +69,7 @@ export function CampaignForm({
           ref={useCaseRef}
           className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
         >
-          {USE_CASES.map((u) => (
+          {CAMPAIGN_USE_CASES.map((u) => (
             <option key={u} value={u}>
               {u.replaceAll("_", " ")}
             </option>

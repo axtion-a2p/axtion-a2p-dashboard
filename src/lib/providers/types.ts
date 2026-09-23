@@ -87,6 +87,7 @@ export interface ProviderAdapter {
   createMessagingService(friendlyName: string): Promise<{ sid: string }>;
   submitCampaign(brandId: string, input: CampaignInput): Promise<CampaignStatus>;
   getCampaignStatus(messagingServiceSid: string, providerCampaignId: string): Promise<CampaignStatus>;
+  updateCampaign(providerCampaignId: string, input: CampaignInput): Promise<CampaignStatus>;
 
   listPhoneNumbers(): Promise<ProviderPhoneNumber[]>;
   assignNumberToMessagingService(messagingServiceSid: string, phoneNumberSid: string): Promise<void>;

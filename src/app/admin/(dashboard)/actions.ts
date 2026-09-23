@@ -2,9 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { z } from "zod";
 import { db } from "@/lib/db";
 import { destroyAdminSession } from "@/lib/auth";
 import { getProvider } from "@/lib/providers";
+import type { CampaignInput } from "@/lib/providers/types";
 import { generateUniqueSubdomain } from "@/lib/generateSubdomain";
 import { subdomainUrl } from "@/lib/subdomain";
 
@@ -117,6 +119,96 @@ export async function assignNumberToCampaign(subAccountId: string, formData: For
   }
 
   revalidatePath(`/admin/${subAccountId}`);
+}
+
+const campaignEditSchema = z.object({
+  useCase: z.string().min(1),
+  description: z.string().min(40, "Description must be at least 40 characters"),
+  optInDetails: z.string().min(40, "Describe how consumers opt in (min 40 characters)"),
+  sampleMessages: z.string().min(1),
+  hasEmbeddedLinks: z.string().optional(),
+  hasEmbeddedPhone: z.string().optional(),
+  termsAndConditionsLink: z.string().url("Enter a valid URL"),
+  privacyPolicyLink: z.string().url("Enter a valid URL"),
+  optinMessage: z.string().min(20, "Opt-in confirmation must be at least 20 characters"),
+  optoutMessage: z.string().min(20, "Opt-out confirmation must be at least 20 characters"),
+  helpMessage: z.string().min(20, "Help message must be at least 20 characters"),
+});
+
+/** Edits an already-submitted campaign in place (e.g. filling in previously-missing sample messages) instead of creating a new one. */
+export async function updateCampaignDetails(campaignId: string, formData: FormData) {
+  const campaign = await db.campaign.findUniqueOrThrow({
+    where: { id: campaignId },
+    include: { subAccount: true },
+  });
+  const subAccount = campaign.subAccount;
+
+  const parsed = campaignEditSchema.safeParse(Object.fromEntries(formData.entries()));
+  if (!parsed.success) {
+    await logEvent(subAccount.id, "CAMPAIGN", `Campaign update failed: ${parsed.error.issues[0]?.message ?? "Invalid input"}`, campaignId);
+    revalidatePath(`/admin/${subAccount.id}`);
+    return;
+  }
+
+  if (!campaign.providerCampaignId) {
+    await logEvent(subAccount.id, "CAMPAIGN", "Campaign update failed: no provider campaign ID on file.", campaignId);
+    revalidatePath(`/admin/${subAccount.id}`);
+    return;
+  }
+
+  const d = parsed.data;
+  const sampleMessages = d.sampleMessages
+    .split("\n")
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .slice(0, 5);
+
+  try {
+    const provider = getProvider(subAccount.provider, subAccount.providerAccountSid, subAccount.providerAuthToken);
+    const input: CampaignInput = {
+      messagingServiceSid: campaign.messagingServiceSid ?? "",
+      useCase: d.useCase,
+      description: d.description,
+      sampleMessages,
+      optInDetails: d.optInDetails,
+      hasEmbeddedLinks: d.hasEmbeddedLinks === "on",
+      hasEmbeddedPhone: d.hasEmbeddedPhone === "on",
+      termsAndConditionsLink: d.termsAndConditionsLink,
+      privacyPolicyLink: d.privacyPolicyLink,
+      optinMessage: d.optinMessage,
+      optoutMessage: d.optoutMessage,
+      helpMessage: d.helpMessage,
+    };
+
+    const status = await provider.updateCampaign(campaign.providerCampaignId, input);
+
+    await db.campaign.update({
+      where: { id: campaignId },
+      data: {
+        useCase: d.useCase,
+        description: d.description,
+        sampleMessages,
+        optInDetails: d.optInDetails,
+        hasEmbeddedLinks: input.hasEmbeddedLinks,
+        hasEmbeddedPhone: input.hasEmbeddedPhone,
+        termsAndConditionsLink: d.termsAndConditionsLink,
+        privacyPolicyLink: d.privacyPolicyLink,
+        optinMessage: d.optinMessage,
+        optoutMessage: d.optoutMessage,
+        helpMessage: d.helpMessage,
+        stage: status.stage,
+        failureReason: status.failureReason,
+        health: status.stage === "APPROVED" ? "HEALTHY" : status.stage === "REJECTED" || status.stage === "SUSPENDED" ? "BLOCKED" : "AT_RISK",
+        rawPayload: status.raw as object,
+      },
+    });
+
+    await logEvent(subAccount.id, "CAMPAIGN", `Campaign updated on ${subAccount.provider} — status: ${status.stage}.`, campaignId);
+  } catch (err) {
+    await logEvent(subAccount.id, "CAMPAIGN", `Campaign update failed: ${errMessage(err)}`, campaignId);
+  }
+
+  revalidatePath(`/admin/${subAccount.id}`);
 }
 
 /** Backfills a compliance-site subdomain for sub-accounts created before this feature existed. */

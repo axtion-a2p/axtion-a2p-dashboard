@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SUBDOMAIN_ROOT } from "@/lib/subdomain";
 
-// Routes a request to {subdomain}.lnxnow.com through to the per-client
+// Routes a request to {subdomain}.axtion.app through to the per-client
 // compliance micro-site at /site/[subdomain]/... without changing the URL
-// the visitor sees. The apex domain and app.axtion.ai/vercel.app hosts are
-// left untouched — only genuine lnxnow.com subdomains are rewritten.
+// the visitor sees. The apex domain and the app's own default Vercel host are
+// left untouched — only genuine axtion.app subdomains are rewritten.
 export function middleware(request: NextRequest) {
   const host = request.headers.get("host") || "";
   const hostname = host.split(":")[0];
