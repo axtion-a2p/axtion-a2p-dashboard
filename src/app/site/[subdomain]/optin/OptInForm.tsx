@@ -12,16 +12,23 @@ export function OptInForm({ subdomain, businessName }: { subdomain: string; busi
 
   if (state.ok) {
     return (
-      <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
-        You&apos;re signed up. Reply STOP at any time to opt out.
+      <div className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+        <svg viewBox="0 0 20 20" fill="currentColor" className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600">
+          <path
+            fillRule="evenodd"
+            d="M16.7 5.3a1 1 0 0 1 0 1.4l-7.5 7.5a1 1 0 0 1-1.4 0l-3.5-3.5a1 1 0 1 1 1.4-1.4l2.8 2.8 6.8-6.8a1 1 0 0 1 1.4 0Z"
+            clipRule="evenodd"
+          />
+        </svg>
+        <span>You&apos;re signed up. Reply STOP at any time to opt out.</span>
       </div>
     );
   }
 
   return (
-    <form action={formAction} className="space-y-4">
+    <form action={formAction} className="space-y-5">
       <div>
-        <label className="block text-sm text-neutral-900" htmlFor="name">
+        <label className="block text-sm font-medium text-slate-700" htmlFor="name">
           Name
         </label>
         <input
@@ -29,11 +36,11 @@ export function OptInForm({ subdomain, businessName }: { subdomain: string; busi
           name="name"
           type="text"
           required
-          className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
+          className="mt-1.5 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-slate-900 focus:ring-1 focus:ring-slate-900"
         />
       </div>
       <div>
-        <label className="block text-sm text-neutral-900" htmlFor="phone">
+        <label className="block text-sm font-medium text-slate-700" htmlFor="phone">
           Mobile phone number
         </label>
         <input
@@ -42,20 +49,20 @@ export function OptInForm({ subdomain, businessName }: { subdomain: string; busi
           type="tel"
           required
           placeholder="+1..."
-          className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
+          className="mt-1.5 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-slate-900 focus:ring-1 focus:ring-slate-900"
         />
       </div>
-      <label className="flex items-start gap-2 text-sm text-neutral-700">
-        <input type="checkbox" name="consent" required className="mt-1" />
+      <label className="flex items-start gap-2.5 text-sm text-slate-600">
+        <input type="checkbox" name="consent" required className="mt-1 h-4 w-4 accent-slate-900" />
         <span>
           By checking this box and submitting this form, I agree to receive SMS text messages from{" "}
           {businessName}. Message frequency may vary. Message and data rates may apply. Reply STOP to opt out
           at any time, or HELP for help. See our{" "}
-          <Link href={`/privacy`} className="underline">
+          <Link href={`/privacy`} className="font-medium text-slate-900 underline">
             Privacy Policy
           </Link>{" "}
           and{" "}
-          <Link href={`/terms`} className="underline">
+          <Link href={`/terms`} className="font-medium text-slate-900 underline">
             Terms of Service
           </Link>
           .
@@ -67,7 +74,7 @@ export function OptInForm({ subdomain, businessName }: { subdomain: string; busi
       <button
         type="submit"
         disabled={pending}
-        className="rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+        className="inline-flex items-center justify-center rounded-lg bg-slate-900 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-slate-700 disabled:opacity-50"
       >
         {pending ? "Submitting…" : "Sign up"}
       </button>
