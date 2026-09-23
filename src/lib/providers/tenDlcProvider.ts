@@ -9,6 +9,7 @@
 
 import { RestClient } from "./restClient";
 import type {
+  AvailableNumber,
   BrandInput,
   BrandStatus,
   CampaignInput,
@@ -288,6 +289,23 @@ export class TenDlcProvider implements ProviderAdapter {
       incoming_phone_numbers: { sid: string; phone_number: string }[];
     }>("GET", `${this.config.apiBase}/2010-04-01/Accounts/${this.config.accountSid}/IncomingPhoneNumbers.json`);
     return result.incoming_phone_numbers.map((n) => ({ providerSid: n.sid, e164: n.phone_number }));
+  }
+
+  async searchAvailableNumbers(areaCode: string): Promise<AvailableNumber[]> {
+    const result = await this.client.request<{ available_phone_numbers: { phone_number: string }[] }>(
+      "GET",
+      `${this.config.apiBase}/2010-04-01/Accounts/${this.config.accountSid}/AvailablePhoneNumbers/US/Local.json?AreaCode=${encodeURIComponent(areaCode)}`
+    );
+    return (result.available_phone_numbers ?? []).map((n) => ({ e164: n.phone_number }));
+  }
+
+  async purchaseNumber(e164: string): Promise<ProviderPhoneNumber> {
+    const result = await this.client.request<{ sid: string; phone_number: string }>(
+      "POST",
+      `${this.config.apiBase}/2010-04-01/Accounts/${this.config.accountSid}/IncomingPhoneNumbers.json`,
+      { PhoneNumber: e164 }
+    );
+    return { providerSid: result.sid, e164: result.phone_number };
   }
 
   async assignNumberToMessagingService(messagingServiceSid: string, phoneNumberSid: string): Promise<void> {

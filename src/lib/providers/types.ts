@@ -80,6 +80,8 @@ export type ProviderPhoneNumber = {
   assignedMessagingServiceSid?: string;
 };
 
+export type AvailableNumber = { e164: string };
+
 export interface ProviderAdapter {
   submitBrand(input: BrandInput): Promise<BrandStatus>;
   getBrandStatus(providerBrandId: string): Promise<BrandStatus>;
@@ -90,5 +92,7 @@ export interface ProviderAdapter {
   updateCampaign(providerCampaignId: string, input: CampaignInput): Promise<CampaignStatus>;
 
   listPhoneNumbers(): Promise<ProviderPhoneNumber[]>;
+  searchAvailableNumbers(areaCode: string): Promise<AvailableNumber[]>;
+  purchaseNumber(e164: string): Promise<ProviderPhoneNumber>;
   assignNumberToMessagingService(messagingServiceSid: string, phoneNumberSid: string): Promise<void>;
 }

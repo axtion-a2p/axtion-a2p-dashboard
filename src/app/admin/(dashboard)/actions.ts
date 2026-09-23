@@ -121,6 +121,46 @@ export async function assignNumberToCampaign(subAccountId: string, formData: For
   revalidatePath(`/admin/${subAccountId}`);
 }
 
+/** Buys a specific number found via searchAvailableNumbers, and optionally assigns it straight to a campaign. */
+export async function purchaseAndAssignNumber(subAccountId: string, formData: FormData) {
+  const e164 = String(formData.get("e164"));
+  const campaignId = String(formData.get("campaignId") || "");
+
+  const subAccount = await db.subAccount.findUniqueOrThrow({ where: { id: subAccountId } });
+
+  try {
+    const provider = getProvider(subAccount.provider, subAccount.providerAccountSid, subAccount.providerAuthToken);
+    const purchased = await provider.purchaseNumber(e164);
+
+    const phoneNumber = await db.phoneNumber.create({
+      data: {
+        subAccountId,
+        e164: purchased.e164,
+        providerSid: purchased.providerSid,
+        status: "UNASSIGNED",
+        purchasedAt: new Date(),
+      },
+    });
+    await logEvent(subAccountId, "PHONE_NUMBER", `Purchased ${purchased.e164}.`, phoneNumber.id);
+
+    if (campaignId) {
+      const campaign = await db.campaign.findUniqueOrThrow({ where: { id: campaignId } });
+      if (!campaign.messagingServiceSid) throw new Error("Campaign has no messaging service");
+
+      await provider.assignNumberToMessagingService(campaign.messagingServiceSid, purchased.providerSid);
+      await db.phoneNumber.update({
+        where: { id: phoneNumber.id },
+        data: { campaignId, status: "ASSIGNED", assignedAt: new Date() },
+      });
+      await logEvent(subAccountId, "PHONE_NUMBER", `${purchased.e164} assigned to campaign "${campaign.useCase}".`, phoneNumber.id);
+    }
+  } catch (err) {
+    await logEvent(subAccountId, "PHONE_NUMBER", `Purchase failed: ${errMessage(err)}`);
+  }
+
+  revalidatePath(`/admin/${subAccountId}`);
+}
+
 const campaignEditSchema = z.object({
   useCase: z.string().min(1),
   description: z.string().min(40, "Description must be at least 40 characters"),

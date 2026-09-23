@@ -24,6 +24,7 @@
 
 import { TextGridClient } from "./textgridClient";
 import type {
+  AvailableNumber,
   BrandInput,
   BrandStatus,
   CampaignInput,
@@ -236,6 +237,25 @@ export class TextGridProvider implements ProviderAdapter {
       incoming_phone_numbers: { sid: string; phone_number: string }[];
     }>("GET", this.url(`/Accounts/${this.config.accountSid}/IncomingPhoneNumbers.json`));
     return result.incoming_phone_numbers.map((n) => ({ providerSid: n.sid, e164: n.phone_number }));
+  }
+
+  async searchAvailableNumbers(areaCode: string): Promise<AvailableNumber[]> {
+    const result = await this.client.request<{ available_phone_numbers: { phone_number: string }[] }>(
+      "GET",
+      this.url(`/Accounts/${this.config.accountSid}/AvailablePhoneNumbers/US/Local.json?AreaCode=${encodeURIComponent(areaCode)}`)
+    );
+    return (result.available_phone_numbers ?? []).map((n) => ({ e164: n.phone_number }));
+  }
+
+  /** Breeze/core endpoint (shares Twilio's classic REST shape) — form-urlencoded, unlike the JSON 10DLC endpoints. */
+  async purchaseNumber(e164: string): Promise<ProviderPhoneNumber> {
+    const result = await this.client.request<{ sid: string; phone_number: string }>(
+      "POST",
+      this.url(`/Accounts/${this.config.accountSid}/IncomingPhoneNumbers.json`),
+      { PhoneNumber: e164 },
+      "form"
+    );
+    return { providerSid: result.sid, e164: result.phone_number };
   }
 
   /** `messagingServiceSid` here is actually the TextGrid campaignId — see getCampaignStatus note above. */

@@ -6,10 +6,21 @@ import { BrandKicker } from "@/components/Brand";
 import { stageColor, healthColor, stageLabel } from "@/lib/status";
 import { subdomainUrl } from "@/lib/subdomain";
 import { CAMPAIGN_USE_CASES } from "@/lib/campaignUseCases";
-import { syncSubAccount, syncPhoneNumbers, assignNumberToCampaign, assignSubdomain, updateCampaignDetails } from "../actions";
+import { getProvider } from "@/lib/providers";
+import type { AvailableNumber } from "@/lib/providers/types";
+import {
+  syncSubAccount,
+  syncPhoneNumbers,
+  assignNumberToCampaign,
+  assignSubdomain,
+  updateCampaignDetails,
+  purchaseAndAssignNumber,
+} from "../actions";
 
-export default async function AdminSubAccountPage({ params }: PageProps<"/admin/[id]">) {
+export default async function AdminSubAccountPage({ params, searchParams }: PageProps<"/admin/[id]">) {
   const { id } = await params;
+  const sp = await searchParams;
+  const areaCode = typeof sp.areaCode === "string" ? sp.areaCode.trim() : undefined;
 
   const subAccount = await db.subAccount.findUnique({
     where: { id },
@@ -23,6 +34,18 @@ export default async function AdminSubAccountPage({ params }: PageProps<"/admin/
   if (!subAccount) notFound();
 
   const unassignedNumbers = subAccount.phoneNumbers.filter((n) => n.status === "UNASSIGNED");
+  const approvedCampaigns = subAccount.campaigns.filter((c) => c.stage === "APPROVED");
+
+  let availableNumbers: AvailableNumber[] = [];
+  let searchError: string | undefined;
+  if (areaCode) {
+    try {
+      const provider = getProvider(subAccount.provider, subAccount.providerAccountSid, subAccount.providerAuthToken);
+      availableNumbers = await provider.searchAvailableNumbers(areaCode);
+    } catch (err) {
+      searchError = err instanceof Error ? err.message : "Search failed";
+    }
+  }
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-10">
@@ -274,6 +297,51 @@ export default async function AdminSubAccountPage({ params }: PageProps<"/admin/
           ))}
           {subAccount.phoneNumbers.length === 0 && <p className="text-sm text-neutral-500">No numbers pulled yet.</p>}
         </ul>
+
+        <form className="mt-4 flex items-center gap-2">
+          <input
+            type="text"
+            name="areaCode"
+            defaultValue={areaCode ?? ""}
+            placeholder="Area code"
+            className="w-28 rounded-md border border-neutral-300 px-2 py-1 text-xs"
+          />
+          <button className="rounded-md border border-neutral-300 px-3 py-1 text-xs font-medium text-neutral-900">
+            Search numbers to buy
+          </button>
+        </form>
+
+        {areaCode && (
+          <div className="mt-3">
+            {searchError ? (
+              <p className="text-xs text-red-600">Search failed: {searchError}</p>
+            ) : availableNumbers.length === 0 ? (
+              <p className="text-xs text-neutral-500">No numbers available in area code {areaCode}.</p>
+            ) : (
+              <ul className="space-y-2">
+                {availableNumbers.map((n) => (
+                  <li key={n.e164} className="flex items-center justify-between gap-2 rounded-md border border-neutral-200 p-2 text-xs">
+                    <span className="font-medium text-neutral-900">{n.e164}</span>
+                    <form action={purchaseAndAssignNumber.bind(null, subAccount.id)} className="flex items-center gap-2">
+                      <input type="hidden" name="e164" value={n.e164} />
+                      <select name="campaignId" className="rounded-md border border-neutral-300 px-2 py-1 text-xs">
+                        <option value="">Don&apos;t assign yet</option>
+                        {approvedCampaigns.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.useCase}
+                          </option>
+                        ))}
+                      </select>
+                      <button className="rounded-md bg-primary px-3 py-1 text-xs font-medium text-white hover:bg-primary-hover">
+                        Buy &amp; assign
+                      </button>
+                    </form>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
       </section>
 
       <section className="rounded-xl border border-neutral-200 p-6">

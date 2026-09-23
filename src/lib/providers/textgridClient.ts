@@ -48,20 +48,42 @@ export class TextGridClient {
     return "Bearer " + Buffer.from(`${this.accountSid}:${this.authToken}`).toString("base64");
   }
 
+  /**
+   * `encoding` matters because TextGrid's Bearer-auth API is really two APIs glued
+   * together: the bespoke 10DLC endpoints (/campaigns/...) take JSON bodies, but the
+   * "Breeze" core endpoints it shares with Twilio's classic REST shape
+   * (Accounts/.../IncomingPhoneNumbers.json) expect form-urlencoded, like Twilio's own.
+   */
   async request<T = unknown>(
     method: "GET" | "POST" | "PUT" | "DELETE",
     url: string,
-    body?: Record<string, unknown>
+    body?: Record<string, unknown>,
+    encoding: "json" | "form" = "json"
   ): Promise<T> {
     const hasBody = body !== undefined && method !== "GET";
+    let payload: string | URLSearchParams | undefined;
+    let contentType: string | undefined;
+    if (hasBody) {
+      if (encoding === "form") {
+        const params = new URLSearchParams();
+        for (const [key, value] of Object.entries(body!)) {
+          if (value !== undefined) params.append(key, String(value));
+        }
+        payload = params;
+        contentType = "application/x-www-form-urlencoded";
+      } else {
+        payload = JSON.stringify(body);
+        contentType = "application/json";
+      }
+    }
 
     const res = await fetch(url, {
       method,
       headers: {
         Authorization: this.authHeader(),
-        ...(hasBody ? { "Content-Type": "application/json" } : {}),
+        ...(contentType ? { "Content-Type": contentType } : {}),
       },
-      body: hasBody ? JSON.stringify(body) : undefined,
+      body: payload,
     });
 
     const text = await res.text();
