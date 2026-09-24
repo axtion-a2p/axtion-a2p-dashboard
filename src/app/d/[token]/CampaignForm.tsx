@@ -7,14 +7,18 @@ import { CAMPAIGN_USE_CASES } from "@/lib/campaignUseCases";
 
 const initialState: FormState = {};
 
+const PROVIDER_LABELS: Record<string, string> = { TEXTGRID: "TextGrid", TWILIO: "Twilio" };
+
 export function CampaignForm({
   token,
   businessName,
   subdomain,
+  approvedProviders,
 }: {
   token: string;
   businessName: string;
   subdomain: string | null;
+  approvedProviders: string[];
 }) {
   const action = submitCampaign.bind(null, token);
   const [state, formAction, pending] = useActionState(action, initialState);
@@ -56,6 +60,19 @@ export function CampaignForm({
             Use standard Marketing template
           </button>
         )}
+      </div>
+
+      <div>
+        <label className="block text-sm text-neutral-900" htmlFor="provider">
+          Submit via
+        </label>
+        <select id="provider" name="provider" required className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm">
+          {approvedProviders.map((p) => (
+            <option key={p} value={p}>
+              {PROVIDER_LABELS[p] ?? p}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div>

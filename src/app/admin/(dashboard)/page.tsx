@@ -11,7 +11,7 @@ export default async function AdminIndexPage({ searchParams }: PageProps<"/admin
 
   const subAccounts = await db.subAccount.findMany({
     where: providerFilter ? { provider: providerFilter as "TWILIO" | "TEXTGRID" } : undefined,
-    include: { brand: true, campaigns: true, phoneNumbers: true },
+    include: { brands: true, campaigns: true, phoneNumbers: true },
     orderBy: { createdAt: "desc" },
   });
 
@@ -64,9 +64,17 @@ export default async function AdminIndexPage({ searchParams }: PageProps<"/admin
                   <p className="font-medium text-neutral-900">{s.businessName}</p>
                   <p className="text-xs text-neutral-500">{s.contactEmail}</p>
                 </td>
-                <td className="px-4 py-3">{s.provider === "TWILIO" ? "Twilio" : "TextGrid"}</td>
+                <td className="px-4 py-3">{s.provider === "TWILIO" ? "Twilio" : "TextGrid"} (default)</td>
                 <td className="px-4 py-3">
-                  {s.brand ? <Badge text={stageLabel(s.brand.stage)} className={stageColor[s.brand.stage]} /> : <span className="text-neutral-400">—</span>}
+                  {s.brands.length === 0 ? (
+                    <span className="text-neutral-400">—</span>
+                  ) : (
+                    <div className="flex flex-wrap gap-1">
+                      {s.brands.map((b) => (
+                        <Badge key={b.id} text={`${b.provider === "TWILIO" ? "Twilio" : "TextGrid"}: ${stageLabel(b.stage)}`} className={stageColor[b.stage]} />
+                      ))}
+                    </div>
+                  )}
                 </td>
                 <td className="px-4 py-3">
                   {s.campaigns.length === 0 ? (
@@ -74,7 +82,11 @@ export default async function AdminIndexPage({ searchParams }: PageProps<"/admin
                   ) : (
                     <div className="flex flex-wrap gap-1">
                       {s.campaigns.map((c) => (
-                        <Badge key={c.id} text={stageLabel(c.health)} className={healthColor[c.health]} />
+                        <Badge
+                          key={c.id}
+                          text={`${c.provider === "TWILIO" ? "Twilio" : "TextGrid"}: ${stageLabel(c.health)}`}
+                          className={healthColor[c.health]}
+                        />
                       ))}
                     </div>
                   )}

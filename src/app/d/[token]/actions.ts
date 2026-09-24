@@ -7,6 +7,7 @@ import { getProvider } from "@/lib/providers";
 import type { BrandInput, CampaignInput } from "@/lib/providers/types";
 
 const brandSchema = z.object({
+  provider: z.enum(["TWILIO", "TEXTGRID"]),
   legalBusinessName: z.string().min(1),
   ein: z.string().min(9, "EIN looks too short"),
   businessType: z.string().min(1),
@@ -67,13 +68,14 @@ export async function submitBrand(token: string, _prev: FormState, formData: For
   };
 
   try {
-    const provider = getProvider(subAccount.provider, subAccount.providerAccountSid, subAccount.providerAuthToken);
+    const provider = getProvider(d.provider, subAccount.providerAccountSid, subAccount.providerAuthToken);
     const status = await provider.submitBrand(input);
 
     await db.brand.upsert({
-      where: { subAccountId: subAccount.id },
+      where: { subAccountId_provider: { subAccountId: subAccount.id, provider: d.provider } },
       create: {
         subAccountId: subAccount.id,
+        provider: d.provider,
         providerBrandId: status.providerBrandId,
         legalBusinessName: d.legalBusinessName,
         ein: d.ein,
@@ -127,14 +129,14 @@ export async function submitBrand(token: string, _prev: FormState, formData: For
       data: {
         subAccountId: subAccount.id,
         entityType: "BRAND",
-        message: `Brand submitted to ${subAccount.provider} — status: ${status.stage}.`,
+        message: `Brand submitted to ${d.provider} — status: ${status.stage}.`,
         actor: "system",
       },
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Submission failed";
     await db.statusEvent.create({
-      data: { subAccountId: subAccount.id, entityType: "BRAND", message: `Brand submission failed: ${message}`, actor: "system" },
+      data: { subAccountId: subAccount.id, entityType: "BRAND", message: `Brand submission to ${d.provider} failed: ${message}`, actor: "system" },
     });
     revalidatePath(`/d/${token}`);
     return { error: message };
@@ -145,6 +147,7 @@ export async function submitBrand(token: string, _prev: FormState, formData: For
 }
 
 const campaignSchema = z.object({
+  provider: z.enum(["TWILIO", "TEXTGRID"]),
   useCase: z.string().min(1),
   description: z.string().min(40, "Twilio requires at least 40 characters describing the use case"),
   optInDetails: z.string().min(40, "Describe how consumers opt in (min 40 characters)"),
@@ -164,12 +167,14 @@ export async function submitCampaign(token: string, _prev: FormState, formData: 
     return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
   const subAccount = await requireSubAccount(token);
-  const brand = await db.brand.findUnique({ where: { subAccountId: subAccount.id } });
+  const d = parsed.data;
+  const brand = await db.brand.findUnique({
+    where: { subAccountId_provider: { subAccountId: subAccount.id, provider: d.provider } },
+  });
   if (!brand || brand.stage !== "APPROVED" || !brand.providerBrandId) {
-    return { error: "The brand must be approved before a campaign can be submitted." };
+    return { error: `The ${d.provider} brand must be approved before a campaign can be submitted through it.` };
   }
 
-  const d = parsed.data;
   const sampleMessages = d.sampleMessages
     .split("\n")
     .map((s) => s.trim())
@@ -177,7 +182,7 @@ export async function submitCampaign(token: string, _prev: FormState, formData: 
     .slice(0, 5);
 
   try {
-    const provider = getProvider(subAccount.provider, subAccount.providerAccountSid, subAccount.providerAuthToken);
+    const provider = getProvider(d.provider, subAccount.providerAccountSid, subAccount.providerAuthToken);
     const service = await provider.createMessagingService(`${subAccount.businessName} - Messaging Service`);
 
     const input: CampaignInput = {
@@ -202,11 +207,12 @@ export async function submitCampaign(token: string, _prev: FormState, formData: 
     // column for TextGrid rows (see textgridProvider.ts's getCampaignStatus /
     // assignNumberToMessagingService notes) instead of the Twilio-only
     // Messaging Service sid.
-    const messagingServiceSid = subAccount.provider === "TEXTGRID" ? status.providerCampaignId : service.sid;
+    const messagingServiceSid = d.provider === "TEXTGRID" ? status.providerCampaignId : service.sid;
 
     await db.campaign.create({
       data: {
         subAccountId: subAccount.id,
+        provider: d.provider,
         providerCampaignId: status.providerCampaignId,
         messagingServiceSid,
         useCase: d.useCase,
@@ -231,14 +237,14 @@ export async function submitCampaign(token: string, _prev: FormState, formData: 
       data: {
         subAccountId: subAccount.id,
         entityType: "CAMPAIGN",
-        message: `Campaign submitted to ${subAccount.provider} — status: ${status.stage}.`,
+        message: `Campaign submitted to ${d.provider} — status: ${status.stage}.`,
         actor: "system",
       },
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Submission failed";
     await db.statusEvent.create({
-      data: { subAccountId: subAccount.id, entityType: "CAMPAIGN", message: `Campaign submission failed: ${message}`, actor: "system" },
+      data: { subAccountId: subAccount.id, entityType: "CAMPAIGN", message: `Campaign submission to ${d.provider} failed: ${message}`, actor: "system" },
     });
     revalidatePath(`/d/${token}`);
     return { error: message };

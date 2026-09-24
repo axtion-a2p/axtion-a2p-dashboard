@@ -15,42 +15,40 @@ export async function logout() {
   redirect("/admin/login");
 }
 
-/** Re-fetch brand + campaign status from the provider and update our local record. */
+/** Re-fetch brand + campaign status from the provider(s) actually used and update our local records. */
 export async function syncSubAccount(subAccountId: string) {
   const subAccount = await db.subAccount.findUniqueOrThrow({
     where: { id: subAccountId },
-    include: { brand: true, campaigns: true },
+    include: { brands: true, campaigns: true },
   });
 
-  let provider;
-  try {
-    provider = getProvider(subAccount.provider, subAccount.providerAccountSid, subAccount.providerAuthToken);
-  } catch (err) {
-    await logEvent(subAccountId, "SUB_ACCOUNT", `Sync failed: ${errMessage(err)}`);
-    revalidatePath(`/admin/${subAccountId}`);
-    return;
+  function providerFor(name: "TWILIO" | "TEXTGRID") {
+    return getProvider(name, subAccount.providerAccountSid, subAccount.providerAuthToken);
   }
 
-  if (subAccount.brand?.providerBrandId) {
+  for (const brand of subAccount.brands) {
+    if (!brand.providerBrandId) continue;
     try {
-      const status = await provider.getBrandStatus(subAccount.brand.providerBrandId);
+      const provider = providerFor(brand.provider);
+      const status = await provider.getBrandStatus(brand.providerBrandId);
       await db.brand.update({
-        where: { id: subAccount.brand.id },
+        where: { id: brand.id },
         data: {
           stage: status.stage,
           failureReason: status.failureReason,
-          approvedAt: status.stage === "APPROVED" ? new Date() : subAccount.brand.approvedAt,
+          approvedAt: status.stage === "APPROVED" ? new Date() : brand.approvedAt,
           rawPayload: status.raw as object,
         },
       });
     } catch (err) {
-      await logEvent(subAccountId, "BRAND", `Sync failed: ${errMessage(err)}`);
+      await logEvent(subAccountId, "BRAND", `Sync failed (${brand.provider}): ${errMessage(err)}`, brand.id);
     }
   }
 
   for (const campaign of subAccount.campaigns) {
     if (!campaign.providerCampaignId || !campaign.messagingServiceSid) continue;
     try {
+      const provider = providerFor(campaign.provider);
       const status = await provider.getCampaignStatus(campaign.messagingServiceSid, campaign.providerCampaignId);
       await db.campaign.update({
         where: { id: campaign.id },
@@ -71,22 +69,23 @@ export async function syncSubAccount(subAccountId: string) {
   revalidatePath("/admin");
 }
 
-/** Pull the provider's current phone number list into our local table (unassigned numbers). */
-export async function syncPhoneNumbers(subAccountId: string) {
+/** Pull a provider's current phone number list into our local table (unassigned numbers). */
+export async function syncPhoneNumbers(subAccountId: string, formData: FormData) {
+  const providerName = String(formData.get("provider")) as "TWILIO" | "TEXTGRID";
   const subAccount = await db.subAccount.findUniqueOrThrow({ where: { id: subAccountId } });
 
   try {
-    const provider = getProvider(subAccount.provider, subAccount.providerAccountSid, subAccount.providerAuthToken);
+    const provider = getProvider(providerName, subAccount.providerAccountSid, subAccount.providerAuthToken);
     const numbers = await provider.listPhoneNumbers();
     for (const n of numbers) {
       await db.phoneNumber.upsert({
         where: { e164: n.e164 },
-        create: { subAccountId, e164: n.e164, providerSid: n.providerSid, status: "UNASSIGNED", purchasedAt: new Date() },
+        create: { subAccountId, provider: providerName, e164: n.e164, providerSid: n.providerSid, status: "UNASSIGNED", purchasedAt: new Date() },
         update: { providerSid: n.providerSid },
       });
     }
   } catch (err) {
-    await logEvent(subAccountId, "SUB_ACCOUNT", `Phone number sync failed: ${errMessage(err)}`);
+    await logEvent(subAccountId, "SUB_ACCOUNT", `Phone number sync failed (${providerName}): ${errMessage(err)}`);
   }
 
   revalidatePath(`/admin/${subAccountId}`);
@@ -103,10 +102,13 @@ export async function assignNumberToCampaign(subAccountId: string, formData: For
   ]);
 
   try {
+    if (phoneNumber.provider !== campaign.provider) {
+      throw new Error(`Number is on ${phoneNumber.provider}, campaign is on ${campaign.provider}`);
+    }
     if (!campaign.messagingServiceSid) throw new Error("Campaign has no messaging service");
     if (!phoneNumber.providerSid) throw new Error("Phone number has no provider SID");
 
-    const provider = getProvider(subAccount.provider, subAccount.providerAccountSid, subAccount.providerAuthToken);
+    const provider = getProvider(campaign.provider, subAccount.providerAccountSid, subAccount.providerAuthToken);
     await provider.assignNumberToMessagingService(campaign.messagingServiceSid, phoneNumber.providerSid);
     await db.phoneNumber.update({
       where: { id: phoneNumberId },
@@ -123,28 +125,31 @@ export async function assignNumberToCampaign(subAccountId: string, formData: For
 
 /** Buys a specific number found via searchAvailableNumbers, and optionally assigns it straight to a campaign. */
 export async function purchaseAndAssignNumber(subAccountId: string, formData: FormData) {
+  const providerName = String(formData.get("provider")) as "TWILIO" | "TEXTGRID";
   const e164 = String(formData.get("e164"));
   const campaignId = String(formData.get("campaignId") || "");
 
   const subAccount = await db.subAccount.findUniqueOrThrow({ where: { id: subAccountId } });
 
   try {
-    const provider = getProvider(subAccount.provider, subAccount.providerAccountSid, subAccount.providerAuthToken);
+    const provider = getProvider(providerName, subAccount.providerAccountSid, subAccount.providerAuthToken);
     const purchased = await provider.purchaseNumber(e164);
 
     const phoneNumber = await db.phoneNumber.create({
       data: {
         subAccountId,
+        provider: providerName,
         e164: purchased.e164,
         providerSid: purchased.providerSid,
         status: "UNASSIGNED",
         purchasedAt: new Date(),
       },
     });
-    await logEvent(subAccountId, "PHONE_NUMBER", `Purchased ${purchased.e164}.`, phoneNumber.id);
+    await logEvent(subAccountId, "PHONE_NUMBER", `Purchased ${purchased.e164} (${providerName}).`, phoneNumber.id);
 
     if (campaignId) {
       const campaign = await db.campaign.findUniqueOrThrow({ where: { id: campaignId } });
+      if (campaign.provider !== providerName) throw new Error(`Campaign is on ${campaign.provider}, number was bought on ${providerName}`);
       if (!campaign.messagingServiceSid) throw new Error("Campaign has no messaging service");
 
       await provider.assignNumberToMessagingService(campaign.messagingServiceSid, purchased.providerSid);
@@ -204,7 +209,7 @@ export async function updateCampaignDetails(campaignId: string, formData: FormDa
     .slice(0, 5);
 
   try {
-    const provider = getProvider(subAccount.provider, subAccount.providerAccountSid, subAccount.providerAuthToken);
+    const provider = getProvider(campaign.provider, subAccount.providerAccountSid, subAccount.providerAuthToken);
     const input: CampaignInput = {
       messagingServiceSid: campaign.messagingServiceSid ?? "",
       useCase: d.useCase,
@@ -243,7 +248,7 @@ export async function updateCampaignDetails(campaignId: string, formData: FormDa
       },
     });
 
-    await logEvent(subAccount.id, "CAMPAIGN", `Campaign updated on ${subAccount.provider} — status: ${status.stage}.`, campaignId);
+    await logEvent(subAccount.id, "CAMPAIGN", `Campaign updated on ${campaign.provider} — status: ${status.stage}.`, campaignId);
   } catch (err) {
     await logEvent(subAccount.id, "CAMPAIGN", `Campaign update failed: ${errMessage(err)}`, campaignId);
   }

@@ -1,15 +1,17 @@
 import Link from "next/link";
-import { requireSiteSubAccount } from "./data";
+import { requireSiteSubAccount, siteVertical } from "./data";
 import { PhoneIllustration } from "./PhoneIllustration";
+import { themeForVertical } from "@/lib/siteTheme";
 
 export default async function SiteHome({ params }: PageProps<"/site/[subdomain]">) {
   const { subdomain } = await params;
   const subAccount = await requireSiteSubAccount(subdomain);
   const name = subAccount.businessName;
+  const theme = themeForVertical(siteVertical(subAccount));
 
   const steps = [
     { title: "Sign up", description: "Enter your name and mobile number on our secure opt-in form." },
-    { title: "Get updates", description: `Receive account updates and service notifications from ${name} by text.` },
+    { title: "Get updates", description: theme.updateDescription },
     { title: "Opt out anytime", description: "Reply STOP to stop receiving messages at any time, no questions asked." },
   ];
 
@@ -37,15 +39,12 @@ export default async function SiteHome({ params }: PageProps<"/site/[subdomain]"
       <section className="grid items-center gap-10 lg:grid-cols-2">
         <div>
           <span className="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
-            SMS Updates
+            {theme.badge}
           </span>
           <h1 className="mt-4 text-4xl font-semibold tracking-tight text-slate-900 sm:text-5xl">
-            Stay in the loop with {name}
+            {theme.headline(name)}
           </h1>
-          <p className="mt-4 text-lg text-slate-600">
-            Get account updates and service notifications sent straight to your phone. Quick to join, easy to
-            leave — you&apos;re always in control.
-          </p>
+          <p className="mt-4 text-lg text-slate-600">{theme.subtext(name)}</p>
           <div className="mt-8 flex flex-wrap items-center gap-4">
             <Link
               href={`/optin`}

@@ -26,8 +26,8 @@ export async function POST(request: NextRequest) {
     ? await db.subAccount.findFirst({
         where: {
           OR: [
-            { brand: { providerBrandId: candidateSid } },
-            { campaigns: { some: { providerCampaignId: candidateSid } } },
+            { brands: { some: { provider: "TWILIO", providerBrandId: candidateSid } } },
+            { campaigns: { some: { provider: "TWILIO", providerCampaignId: candidateSid } } },
           ],
         },
       })

@@ -17,15 +17,22 @@ import {
   purchaseAndAssignNumber,
 } from "../actions";
 
+const PROVIDER_LABELS: Record<string, string> = { TEXTGRID: "TextGrid", TWILIO: "Twilio" };
+const PROVIDERS: { value: "TEXTGRID" | "TWILIO"; label: string }[] = [
+  { value: "TEXTGRID", label: "TextGrid" },
+  { value: "TWILIO", label: "Twilio" },
+];
+
 export default async function AdminSubAccountPage({ params, searchParams }: PageProps<"/admin/[id]">) {
   const { id } = await params;
   const sp = await searchParams;
   const areaCode = typeof sp.areaCode === "string" ? sp.areaCode.trim() : undefined;
+  const searchProvider = (typeof sp.provider === "string" ? sp.provider : "TEXTGRID") as "TEXTGRID" | "TWILIO";
 
   const subAccount = await db.subAccount.findUnique({
     where: { id },
     include: {
-      brand: true,
+      brands: true,
       campaigns: { include: { phoneNumbers: true }, orderBy: { createdAt: "desc" } },
       phoneNumbers: true,
       statusEvents: { orderBy: { createdAt: "desc" }, take: 30 },
@@ -34,13 +41,13 @@ export default async function AdminSubAccountPage({ params, searchParams }: Page
   if (!subAccount) notFound();
 
   const unassignedNumbers = subAccount.phoneNumbers.filter((n) => n.status === "UNASSIGNED");
-  const approvedCampaigns = subAccount.campaigns.filter((c) => c.stage === "APPROVED");
+  const approvedCampaignsForSearch = subAccount.campaigns.filter((c) => c.stage === "APPROVED" && c.provider === searchProvider);
 
   let availableNumbers: AvailableNumber[] = [];
   let searchError: string | undefined;
   if (areaCode) {
     try {
-      const provider = getProvider(subAccount.provider, subAccount.providerAccountSid, subAccount.providerAuthToken);
+      const provider = getProvider(searchProvider, subAccount.providerAccountSid, subAccount.providerAuthToken);
       availableNumbers = await provider.searchAvailableNumbers(areaCode);
     } catch (err) {
       searchError = err instanceof Error ? err.message : "Search failed";
@@ -56,7 +63,6 @@ export default async function AdminSubAccountPage({ params, searchParams }: Page
       <div className="mt-4 mb-8 flex items-center justify-between">
         <div>
           <BrandKicker />
-          <p className="text-sm text-neutral-500">{subAccount.provider === "TWILIO" ? "Twilio" : "TextGrid"}</p>
           <h1 className="text-2xl font-semibold text-neutral-900">{subAccount.businessName}</h1>
           <p className="text-xs text-neutral-400">/d/{subAccount.token}</p>
           {subAccount.subdomain ? (
@@ -82,19 +88,26 @@ export default async function AdminSubAccountPage({ params, searchParams }: Page
       </div>
 
       <section className="mb-8 rounded-xl border border-neutral-200 p-6">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-medium text-neutral-900">Brand</h2>
-          {subAccount.brand && <Badge text={stageLabel(subAccount.brand.stage)} className={stageColor[subAccount.brand.stage]} />}
-        </div>
-        {subAccount.brand ? (
-          <dl className="grid grid-cols-2 gap-2 text-sm">
-            <Dt label="Legal name" value={subAccount.brand.legalBusinessName} />
-            <Dt label="EIN" value={subAccount.brand.ein ?? "—"} />
-            <Dt label="Provider brand ID" value={subAccount.brand.providerBrandId ?? "—"} />
-            <Dt label="Submitted" value={subAccount.brand.submittedAt?.toLocaleString() ?? "—"} />
-          </dl>
-        ) : (
+        <h2 className="mb-3 text-lg font-medium text-neutral-900">Brand</h2>
+        {subAccount.brands.length === 0 ? (
           <p className="text-sm text-neutral-500">Not submitted yet.</p>
+        ) : (
+          <ul className="space-y-3">
+            {subAccount.brands.map((brand) => (
+              <li key={brand.id} className="rounded-lg border border-neutral-200 p-3">
+                <div className="mb-2 flex items-center justify-between">
+                  <p className="text-sm font-medium text-neutral-900">{PROVIDER_LABELS[brand.provider]}</p>
+                  <Badge text={stageLabel(brand.stage)} className={stageColor[brand.stage]} />
+                </div>
+                <dl className="grid grid-cols-2 gap-2 text-sm">
+                  <Dt label="Legal name" value={brand.legalBusinessName} />
+                  <Dt label="EIN" value={brand.ein ?? "—"} />
+                  <Dt label="Provider brand ID" value={brand.providerBrandId ?? "—"} />
+                  <Dt label="Submitted" value={brand.submittedAt?.toLocaleString() ?? "—"} />
+                </dl>
+              </li>
+            ))}
+          </ul>
         )}
       </section>
 
@@ -105,7 +118,9 @@ export default async function AdminSubAccountPage({ params, searchParams }: Page
           {subAccount.campaigns.map((c) => (
             <li key={c.id} className="rounded-lg border border-neutral-200 p-4">
               <div className="flex items-center justify-between">
-                <p className="font-medium text-neutral-900">{c.useCase}</p>
+                <p className="font-medium text-neutral-900">
+                  {c.useCase} <span className="font-normal text-neutral-400">· {PROVIDER_LABELS[c.provider]}</span>
+                </p>
                 <div className="flex gap-2">
                   <Badge text={stageLabel(c.stage)} className={stageColor[c.stage]} />
                   <Badge text={stageLabel(c.health)} className={healthColor[c.health]} />
@@ -116,20 +131,26 @@ export default async function AdminSubAccountPage({ params, searchParams }: Page
                 Numbers: {c.phoneNumbers.map((n) => n.e164).join(", ") || "none"}
               </p>
 
-              {unassignedNumbers.length > 0 && c.stage === "APPROVED" && (
-                <form action={assignNumberToCampaign.bind(null, subAccount.id)} className="mt-3 flex items-center gap-2">
-                  <input type="hidden" name="campaignId" value={c.id} />
-                  <select name="phoneNumberId" required className="rounded-md border border-neutral-300 px-2 py-1 text-xs">
-                    <option value="">Assign a number…</option>
-                    {unassignedNumbers.map((n) => (
-                      <option key={n.id} value={n.id}>
-                        {n.e164}
-                      </option>
-                    ))}
-                  </select>
-                  <button className="rounded-md bg-primary px-3 py-1 text-xs font-medium text-white hover:bg-primary-hover">Assign</button>
-                </form>
-              )}
+              {(() => {
+                const eligibleNumbers = unassignedNumbers.filter((n) => n.provider === c.provider);
+                return (
+                  eligibleNumbers.length > 0 &&
+                  c.stage === "APPROVED" && (
+                    <form action={assignNumberToCampaign.bind(null, subAccount.id)} className="mt-3 flex items-center gap-2">
+                      <input type="hidden" name="campaignId" value={c.id} />
+                      <select name="phoneNumberId" required className="rounded-md border border-neutral-300 px-2 py-1 text-xs">
+                        <option value="">Assign a number…</option>
+                        {eligibleNumbers.map((n) => (
+                          <option key={n.id} value={n.id}>
+                            {n.e164}
+                          </option>
+                        ))}
+                      </select>
+                      <button className="rounded-md bg-primary px-3 py-1 text-xs font-medium text-white hover:bg-primary-hover">Assign</button>
+                    </form>
+                  )
+                );
+              })()}
 
               <details className="mt-3">
                 <summary className="cursor-pointer text-xs font-medium text-primary underline">Edit campaign</summary>
@@ -282,23 +303,36 @@ export default async function AdminSubAccountPage({ params, searchParams }: Page
       </section>
 
       <section className="mb-8 rounded-xl border border-neutral-200 p-6">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-medium text-neutral-900">Phone numbers</h2>
-          <form action={syncPhoneNumbers.bind(null, subAccount.id)}>
-            <button className="text-xs font-medium text-primary underline">Pull from provider</button>
-          </form>
-        </div>
+        <h2 className="mb-3 text-lg font-medium text-neutral-900">Phone numbers</h2>
         <ul className="space-y-1 text-sm">
           {subAccount.phoneNumbers.map((n) => (
             <li key={n.id} className="flex justify-between">
-              <span>{n.e164}</span>
+              <span>
+                {n.e164} <span className="text-neutral-400">· {PROVIDER_LABELS[n.provider]}</span>
+              </span>
               <span className="text-neutral-500">{stageLabel(n.status)}</span>
             </li>
           ))}
           {subAccount.phoneNumbers.length === 0 && <p className="text-sm text-neutral-500">No numbers pulled yet.</p>}
         </ul>
 
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          {PROVIDERS.map((p) => (
+            <form key={p.value} action={syncPhoneNumbers.bind(null, subAccount.id)}>
+              <input type="hidden" name="provider" value={p.value} />
+              <button className="text-xs font-medium text-primary underline">Pull from {p.label}</button>
+            </form>
+          ))}
+        </div>
+
         <form className="mt-4 flex items-center gap-2">
+          <select name="provider" defaultValue={searchProvider} className="rounded-md border border-neutral-300 px-2 py-1 text-xs">
+            {PROVIDERS.map((p) => (
+              <option key={p.value} value={p.value}>
+                {p.label}
+              </option>
+            ))}
+          </select>
           <input
             type="text"
             name="areaCode"
@@ -316,17 +350,20 @@ export default async function AdminSubAccountPage({ params, searchParams }: Page
             {searchError ? (
               <p className="text-xs text-red-600">Search failed: {searchError}</p>
             ) : availableNumbers.length === 0 ? (
-              <p className="text-xs text-neutral-500">No numbers available in area code {areaCode}.</p>
+              <p className="text-xs text-neutral-500">
+                No numbers available in area code {areaCode} on {PROVIDER_LABELS[searchProvider]}.
+              </p>
             ) : (
               <ul className="space-y-2">
                 {availableNumbers.map((n) => (
                   <li key={n.e164} className="flex items-center justify-between gap-2 rounded-md border border-neutral-200 p-2 text-xs">
                     <span className="font-medium text-neutral-900">{n.e164}</span>
                     <form action={purchaseAndAssignNumber.bind(null, subAccount.id)} className="flex items-center gap-2">
+                      <input type="hidden" name="provider" value={searchProvider} />
                       <input type="hidden" name="e164" value={n.e164} />
                       <select name="campaignId" className="rounded-md border border-neutral-300 px-2 py-1 text-xs">
                         <option value="">Don&apos;t assign yet</option>
-                        {approvedCampaigns.map((c) => (
+                        {approvedCampaignsForSearch.map((c) => (
                           <option key={c.id} value={c.id}>
                             {c.useCase}
                           </option>

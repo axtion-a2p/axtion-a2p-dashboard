@@ -39,10 +39,9 @@ export async function POST(request: NextRequest) {
     brandId || campaignId
       ? await db.subAccount.findFirst({
           where: {
-            provider: "TEXTGRID",
             OR: [
-              ...(brandId ? [{ brand: { providerBrandId: brandId } }] : []),
-              ...(campaignId ? [{ campaigns: { some: { providerCampaignId: campaignId } } }] : []),
+              ...(brandId ? [{ brands: { some: { provider: "TEXTGRID" as const, providerBrandId: brandId } } }] : []),
+              ...(campaignId ? [{ campaigns: { some: { provider: "TEXTGRID" as const, providerCampaignId: campaignId } } }] : []),
             ],
           },
         })

@@ -21,8 +21,12 @@ const VERTICALS = [
   "OTHER",
 ];
 const JOB_POSITIONS = ["Director", "GM", "VP", "CEO", "CFO", "General Counsel", "Other"];
+const PROVIDERS: { value: string; label: string }[] = [
+  { value: "TEXTGRID", label: "TextGrid" },
+  { value: "TWILIO", label: "Twilio" },
+];
 
-export function BrandForm({ token }: { token: string }) {
+export function BrandForm({ token, defaultProvider }: { token: string; defaultProvider?: string }) {
   const action = submitBrand.bind(null, token);
   const [state, formAction, pending] = useActionState(action, initialState);
 
@@ -30,6 +34,24 @@ export function BrandForm({ token }: { token: string }) {
     <form action={formAction} className="space-y-5">
       <fieldset className="space-y-4">
         <legend className="text-sm font-medium text-neutral-900">Business</legend>
+        <div>
+          <label className="block text-sm text-neutral-900" htmlFor="provider">
+            Submit via
+          </label>
+          <select
+            id="provider"
+            name="provider"
+            required
+            defaultValue={defaultProvider}
+            className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
+          >
+            {PROVIDERS.map((p) => (
+              <option key={p.value} value={p.value}>
+                {p.label}
+              </option>
+            ))}
+          </select>
+        </div>
         <Field label="Legal business name" name="legalBusinessName" required />
         <Field label="EIN" name="ein" required placeholder="12-3456789" />
         <Select label="Business type" name="businessType" options={BUSINESS_TYPES} />

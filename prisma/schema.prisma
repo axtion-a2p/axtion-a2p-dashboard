@@ -74,7 +74,7 @@ model SubAccount {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  brand         Brand?
+  brands        Brand[]
   campaigns     Campaign[]
   phoneNumbers  PhoneNumber[]
   statusEvents  StatusEvent[]
@@ -83,10 +83,14 @@ model SubAccount {
   @@index([provider])
 }
 
+// One row per (sub-account, provider): a sub-account isn't locked to a single
+// carrier — it can hold a brand registration under Twilio, TextGrid, or both,
+// chosen per submission based on that client's actual needs.
 model Brand {
   id                String     @id @default(cuid())
-  subAccountId      String     @unique
+  subAccountId      String
   subAccount        SubAccount @relation(fields: [subAccountId], references: [id], onDelete: Cascade)
+  provider          Provider
 
   providerBrandId   String? // Twilio Brand SID (BNxxx) or TextGrid equivalent
 
@@ -118,12 +122,19 @@ model Brand {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@unique([subAccountId, provider])
+  @@index([subAccountId])
 }
 
+// A campaign is also tagged with its own provider, independent of its sibling
+// campaigns on the same sub-account — e.g. a Marketing campaign on TextGrid and
+// an Account Notification campaign on Twilio for the same client.
 model Campaign {
   id                 String        @id @default(cuid())
   subAccountId       String
   subAccount         SubAccount    @relation(fields: [subAccountId], references: [id], onDelete: Cascade)
+  provider           Provider
 
   providerCampaignId String? // Twilio Campaign SID (CU/QE) or TextGrid equivalent
   messagingServiceSid String? // Twilio Messaging Service SID this campaign is bound to
@@ -157,10 +168,14 @@ model Campaign {
   @@index([subAccountId])
 }
 
+// provider records which carrier's number inventory this was purchased from —
+// needed even before a number is assigned to a campaign, since search/purchase
+// itself is provider-specific.
 model PhoneNumber {
   id             String       @id @default(cuid())
   subAccountId   String
   subAccount     SubAccount   @relation(fields: [subAccountId], references: [id], onDelete: Cascade)
+  provider       Provider
   campaignId     String?
   campaign       Campaign?    @relation(fields: [campaignId], references: [id])
 
