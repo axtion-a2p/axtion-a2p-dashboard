@@ -43,6 +43,13 @@ export default async function AdminSubAccountPage({ params, searchParams }: Page
   const unassignedNumbers = subAccount.phoneNumbers.filter((n) => n.status === "UNASSIGNED");
   const approvedCampaignsForSearch = subAccount.campaigns.filter((c) => c.stage === "APPROVED" && c.provider === searchProvider);
 
+  const checklist = [
+    { label: "Compliance site assigned", done: Boolean(subAccount.subdomain), href: "#top" },
+    { label: "Brand approved", done: subAccount.brands.some((b) => b.stage === "APPROVED"), href: "#brand" },
+    { label: "Campaign approved", done: subAccount.campaigns.some((c) => c.stage === "APPROVED"), href: "#campaigns" },
+    { label: "Number attached", done: subAccount.phoneNumbers.some((n) => n.status === "ASSIGNED"), href: "#numbers" },
+  ];
+
   let availableNumbers: AvailableNumber[] = [];
   let searchError: string | undefined;
   if (areaCode) {
@@ -60,7 +67,7 @@ export default async function AdminSubAccountPage({ params, searchParams }: Page
         ← All sub-accounts
       </Link>
 
-      <div className="mt-4 mb-8 flex items-center justify-between">
+      <div id="top" className="mt-4 mb-8 flex items-center justify-between">
         <div>
           <BrandKicker />
           <h1 className="text-2xl font-semibold text-neutral-900">{subAccount.businessName}</h1>
@@ -87,7 +94,41 @@ export default async function AdminSubAccountPage({ params, searchParams }: Page
         </form>
       </div>
 
-      <section className="mb-8 rounded-xl border border-neutral-200 p-6">
+      <section className="mb-8 rounded-xl border border-neutral-200 bg-neutral-50 p-6">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-lg font-medium text-neutral-900">Onboarding</h2>
+          <a
+            href="https://github.com/axtion-a2p/axtion-a2p-dashboard/blob/main/docs/client-onboarding-runbook.md"
+            target="_blank"
+            rel="noreferrer"
+            className="text-xs font-medium text-primary underline"
+          >
+            Runbook
+          </a>
+        </div>
+        <ul className="space-y-2">
+          {checklist.map((step) => (
+            <li key={step.label} className="flex items-center gap-2.5 text-sm">
+              <span
+                className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
+                  step.done ? "bg-emerald-500 text-white" : "border border-neutral-300 text-transparent"
+                }`}
+              >
+                ✓
+              </span>
+              {step.done ? (
+                <span className="text-neutral-500 line-through">{step.label}</span>
+              ) : (
+                <a href={step.href} className="font-medium text-neutral-900 underline">
+                  {step.label}
+                </a>
+              )}
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section id="brand" className="mb-8 rounded-xl border border-neutral-200 p-6">
         <h2 className="mb-3 text-lg font-medium text-neutral-900">Brand</h2>
         {subAccount.brands.length === 0 ? (
           <p className="text-sm text-neutral-500">Not submitted yet.</p>
@@ -111,7 +152,7 @@ export default async function AdminSubAccountPage({ params, searchParams }: Page
         )}
       </section>
 
-      <section className="mb-8 rounded-xl border border-neutral-200 p-6">
+      <section id="campaigns" className="mb-8 rounded-xl border border-neutral-200 p-6">
         <h2 className="mb-3 text-lg font-medium text-neutral-900">Campaigns</h2>
         {subAccount.campaigns.length === 0 && <p className="text-sm text-neutral-500">No campaigns yet.</p>}
         <ul className="space-y-3">
@@ -302,7 +343,7 @@ export default async function AdminSubAccountPage({ params, searchParams }: Page
         </ul>
       </section>
 
-      <section className="mb-8 rounded-xl border border-neutral-200 p-6">
+      <section id="numbers" className="mb-8 rounded-xl border border-neutral-200 p-6">
         <h2 className="mb-3 text-lg font-medium text-neutral-900">Phone numbers</h2>
         <ul className="space-y-1 text-sm">
           {subAccount.phoneNumbers.map((n) => (
