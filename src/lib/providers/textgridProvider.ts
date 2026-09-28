@@ -17,10 +17,16 @@
 //      VERIFIED as usable/APPROVED (a brand can register campaigns in both
 //      states), PENDING as still-in-flight, and UNVERIFIED as FAILED.
 //   2. Campaign `status`: the doc's only documented value is "ACTIVE"; there's
-//      no published FAILED/REJECTED enum. We infer APPROVED from
-//      campaignEnabled=true + status="ACTIVE", and fall back to PENDING_REVIEW
-//      otherwise, treating campaignEnabled=false (post-creation) as SUSPENDED.
-//      Re-check this against a real submission/webhook payload once available.
+//      no published FAILED/REJECTED enum. We map stage from `status` alone
+//      (ACTIVE -> APPROVED, else PENDING_REVIEW) and surface `campaignEnabled`
+//      separately via CampaignStatus.enabled instead of folding it into stage.
+//      CONFIRMED against a real campaign (Dean Capital LLC, CG0FFN0): a
+//      registration can sit at status=ACTIVE with campaignEnabled=false and
+//      SecondaryDcaSharingStatus=PENDING for 6+ days, including after phone
+//      numbers were attached — this is TextGrid's own "still pending" state,
+//      not a transient post-creation lag, and not a suspension (nothing was
+//      ever enabled and then revoked). Callers should reflect `enabled` in
+//      CampaignHealth, not in stage.
 
 import { TextGridClient } from "./textgridClient";
 import type {
@@ -219,15 +225,11 @@ export class TextGridProvider implements ProviderAdapter {
   }
 
   private mapCampaignStatus(campaign: TextGridCampaign): CampaignStatus {
-    const stage =
-      campaign.campaignEnabled === false
-        ? "SUSPENDED"
-        : campaign.status === "ACTIVE"
-          ? "APPROVED"
-          : "PENDING_REVIEW";
+    const stage = campaign.status === "ACTIVE" ? "APPROVED" : "PENDING_REVIEW";
     return {
       providerCampaignId: campaign.campaignId,
       stage,
+      enabled: campaign.campaignEnabled !== false,
       raw: campaign,
     };
   }

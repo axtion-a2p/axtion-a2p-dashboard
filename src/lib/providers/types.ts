@@ -71,6 +71,15 @@ export type CampaignStatus = {
   stage: "PENDING_REVIEW" | "APPROVED" | "REJECTED" | "SUSPENDED";
   failureReason?: string;
   throughputPerMinute?: number;
+  /**
+   * Registered/approved (stage) is not the same as actually live for traffic.
+   * TextGrid campaigns can sit at stage=APPROVED with campaignEnabled=false
+   * and SecondaryDcaSharingStatus=PENDING for an extended period even after
+   * numbers are attached — confirmed against a real campaign (not just
+   * transient post-creation lag). `undefined` means the provider doesn't
+   * expose this distinction (e.g. Twilio) — callers should treat that as "yes".
+   */
+  enabled?: boolean;
   raw?: unknown;
 };
 

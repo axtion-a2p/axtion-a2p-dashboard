@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { getProvider } from "@/lib/providers";
 import type { BrandInput, CampaignInput } from "@/lib/providers/types";
+import { healthForStatus } from "@/lib/campaignHealth";
 
 const brandSchema = z.object({
   provider: z.enum(["TWILIO", "TEXTGRID"]),
@@ -227,7 +228,7 @@ export async function submitCampaign(token: string, _prev: FormState, formData: 
         optoutMessage: d.optoutMessage,
         helpMessage: d.helpMessage,
         stage: status.stage,
-        health: status.stage === "APPROVED" ? "HEALTHY" : "UNKNOWN",
+        health: healthForStatus(status),
         submittedAt: new Date(),
         rawPayload: status.raw as object,
       },

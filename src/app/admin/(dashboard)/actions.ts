@@ -9,6 +9,7 @@ import { getProvider } from "@/lib/providers";
 import type { CampaignInput } from "@/lib/providers/types";
 import { generateUniqueSubdomain } from "@/lib/generateSubdomain";
 import { subdomainUrl } from "@/lib/subdomain";
+import { healthForStatus } from "@/lib/campaignHealth";
 
 export async function logout() {
   await destroyAdminSession();
@@ -55,7 +56,7 @@ export async function syncSubAccount(subAccountId: string) {
         data: {
           stage: status.stage,
           failureReason: status.failureReason,
-          health: status.stage === "APPROVED" ? "HEALTHY" : status.stage === "REJECTED" || status.stage === "SUSPENDED" ? "BLOCKED" : "AT_RISK",
+          health: healthForStatus(status),
           approvedAt: status.stage === "APPROVED" ? new Date() : campaign.approvedAt,
           rawPayload: status.raw as object,
         },
@@ -243,7 +244,7 @@ export async function updateCampaignDetails(campaignId: string, formData: FormDa
         helpMessage: d.helpMessage,
         stage: status.stage,
         failureReason: status.failureReason,
-        health: status.stage === "APPROVED" ? "HEALTHY" : status.stage === "REJECTED" || status.stage === "SUSPENDED" ? "BLOCKED" : "AT_RISK",
+        health: healthForStatus(status),
         rawPayload: status.raw as object,
       },
     });
