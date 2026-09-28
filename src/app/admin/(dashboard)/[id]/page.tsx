@@ -6,6 +6,7 @@ import { BrandKicker } from "@/components/Brand";
 import { stageColor, healthColor, stageLabel } from "@/lib/status";
 import { subdomainUrl } from "@/lib/subdomain";
 import { CAMPAIGN_USE_CASES } from "@/lib/campaignUseCases";
+import { carrierStatusLabel, carrierStatusColor } from "@/lib/campaignHealth";
 import { getProvider } from "@/lib/providers";
 import type { AvailableNumber } from "@/lib/providers/types";
 import {
@@ -165,6 +166,12 @@ export default async function AdminSubAccountPage({ params, searchParams }: Page
                 <div className="flex gap-2">
                   <Badge text={stageLabel(c.stage)} className={stageColor[c.stage]} />
                   <Badge text={stageLabel(c.health)} className={healthColor[c.health]} />
+                  {carrierStatusLabel(c) && (
+                    <Badge
+                      text={`Carrier: ${stageLabel(carrierStatusLabel(c)!)}`}
+                      className={carrierStatusColor[carrierStatusLabel(c)!] ?? "bg-neutral-100 text-neutral-600"}
+                    />
+                  )}
                 </div>
               </div>
               <p className="mt-1 text-xs text-neutral-500">Messaging service: {c.messagingServiceSid ?? "—"}</p>

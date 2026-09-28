@@ -254,3 +254,64 @@ export async function submitCampaign(token: string, _prev: FormState, formData: 
   revalidatePath(`/d/${token}`);
   return { ok: true };
 }
+
+/** Self-serve: buy a number found via NumbersPanel's search and optionally attach it straight to one of this sub-account's own approved campaigns. */
+export async function purchaseAndAssignNumber(token: string, formData: FormData) {
+  const providerName = String(formData.get("provider")) as "TWILIO" | "TEXTGRID";
+  const e164 = String(formData.get("e164"));
+  const campaignId = String(formData.get("campaignId") || "");
+
+  const subAccount = await requireSubAccount(token);
+
+  try {
+    const provider = getProvider(providerName, subAccount.providerAccountSid, subAccount.providerAuthToken);
+    const purchased = await provider.purchaseNumber(e164);
+
+    const phoneNumber = await db.phoneNumber.create({
+      data: {
+        subAccountId: subAccount.id,
+        provider: providerName,
+        e164: purchased.e164,
+        providerSid: purchased.providerSid,
+        status: "UNASSIGNED",
+        purchasedAt: new Date(),
+      },
+    });
+    await db.statusEvent.create({
+      data: {
+        subAccountId: subAccount.id,
+        entityType: "PHONE_NUMBER",
+        message: `Purchased ${purchased.e164} (${providerName}).`,
+        actor: "client",
+      },
+    });
+
+    if (campaignId) {
+      const campaign = await db.campaign.findUniqueOrThrow({ where: { id: campaignId } });
+      if (campaign.subAccountId !== subAccount.id) throw new Error("That campaign doesn't belong to this sub-account.");
+      if (campaign.provider !== providerName) throw new Error(`Campaign is on ${campaign.provider}, number was bought on ${providerName}.`);
+      if (!campaign.messagingServiceSid) throw new Error("Campaign has no messaging service.");
+
+      await provider.assignNumberToMessagingService(campaign.messagingServiceSid, purchased.providerSid);
+      await db.phoneNumber.update({
+        where: { id: phoneNumber.id },
+        data: { campaignId, status: "ASSIGNED", assignedAt: new Date() },
+      });
+      await db.statusEvent.create({
+        data: {
+          subAccountId: subAccount.id,
+          entityType: "PHONE_NUMBER",
+          message: `${purchased.e164} assigned to campaign "${campaign.useCase}".`,
+          actor: "client",
+        },
+      });
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Purchase failed";
+    await db.statusEvent.create({
+      data: { subAccountId: subAccount.id, entityType: "PHONE_NUMBER", message: `Purchase failed: ${message}`, actor: "client" },
+    });
+  }
+
+  revalidatePath(`/d/${token}?tab=numbers`);
+}
