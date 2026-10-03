@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { destroyAdminSession } from "@/lib/auth";
+import { destroyAdminSession, requireAdmin } from "@/lib/auth";
 import { getProvider } from "@/lib/providers";
 import type { CampaignInput } from "@/lib/providers/types";
 import { generateUniqueSubdomain } from "@/lib/generateSubdomain";
@@ -18,6 +18,7 @@ export async function logout() {
 
 /** Re-fetch brand + campaign status from the provider(s) actually used and update our local records. */
 export async function syncSubAccount(subAccountId: string) {
+  await requireAdmin();
   const subAccount = await db.subAccount.findUniqueOrThrow({
     where: { id: subAccountId },
     include: { brands: true, campaigns: true },
@@ -72,6 +73,7 @@ export async function syncSubAccount(subAccountId: string) {
 
 /** Pull a provider's current phone number list into our local table (unassigned numbers). */
 export async function syncPhoneNumbers(subAccountId: string, formData: FormData) {
+  await requireAdmin();
   const providerName = String(formData.get("provider")) as "TWILIO" | "TEXTGRID";
   const subAccount = await db.subAccount.findUniqueOrThrow({ where: { id: subAccountId } });
 
@@ -93,6 +95,7 @@ export async function syncPhoneNumbers(subAccountId: string, formData: FormData)
 }
 
 export async function assignNumberToCampaign(subAccountId: string, formData: FormData) {
+  await requireAdmin();
   const phoneNumberId = String(formData.get("phoneNumberId"));
   const campaignId = String(formData.get("campaignId"));
 
@@ -126,6 +129,7 @@ export async function assignNumberToCampaign(subAccountId: string, formData: For
 
 /** Buys a specific number found via searchAvailableNumbers, and optionally assigns it straight to a campaign. */
 export async function purchaseAndAssignNumber(subAccountId: string, formData: FormData) {
+  await requireAdmin();
   const providerName = String(formData.get("provider")) as "TWILIO" | "TEXTGRID";
   const e164 = String(formData.get("e164"));
   const campaignId = String(formData.get("campaignId") || "");
@@ -183,6 +187,7 @@ const campaignEditSchema = z.object({
 
 /** Edits an already-submitted campaign in place (e.g. filling in previously-missing sample messages) instead of creating a new one. */
 export async function updateCampaignDetails(campaignId: string, formData: FormData) {
+  await requireAdmin();
   const campaign = await db.campaign.findUniqueOrThrow({
     where: { id: campaignId },
     include: { subAccount: true },
@@ -259,6 +264,7 @@ export async function updateCampaignDetails(campaignId: string, formData: FormDa
 
 /** Backfills a compliance-site subdomain for sub-accounts created before this feature existed. */
 export async function assignSubdomain(subAccountId: string) {
+  await requireAdmin();
   const subAccount = await db.subAccount.findUniqueOrThrow({ where: { id: subAccountId } });
   if (subAccount.subdomain) return;
 
@@ -268,6 +274,34 @@ export async function assignSubdomain(subAccountId: string) {
 
   revalidatePath(`/admin/${subAccountId}`);
   revalidatePath("/admin");
+}
+
+/**
+ * Points this sub-account at a dedicated Twilio/TextGrid (sub)account instead
+ * of the platform-wide default — e.g. a client who already has their own
+ * Twilio subaccount set up (own Primary Business Profile, own billing).
+ * Leaving a field blank clears the override back to the platform default.
+ */
+export async function setProviderCredentials(subAccountId: string, formData: FormData) {
+  await requireAdmin();
+  const sidInput = String(formData.get("providerAccountSid") || "").trim();
+  const tokenInput = String(formData.get("providerAuthToken") || "").trim();
+
+  if (!sidInput) {
+    await db.subAccount.update({ where: { id: subAccountId }, data: { providerAccountSid: null, providerAuthToken: null } });
+    await logEvent(subAccountId, "SUB_ACCOUNT", "Dedicated provider account override cleared — back to platform default.");
+  } else {
+    // A blank token keeps whatever's already stored, so updating just the SID
+    // doesn't require re-typing a token that's already set.
+    const existing = await db.subAccount.findUniqueOrThrow({ where: { id: subAccountId } });
+    await db.subAccount.update({
+      where: { id: subAccountId },
+      data: { providerAccountSid: sidInput, providerAuthToken: tokenInput || existing.providerAuthToken },
+    });
+    await logEvent(subAccountId, "SUB_ACCOUNT", `Dedicated provider account set: ${sidInput}`);
+  }
+
+  revalidatePath(`/admin/${subAccountId}`);
 }
 
 function errMessage(err: unknown) {

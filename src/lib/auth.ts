@@ -52,3 +52,16 @@ export async function isAdminAuthed(): Promise<boolean> {
     return false;
   }
 }
+
+/**
+ * Server Actions are reachable by their encoded action reference independent of
+ * which page rendered them — the admin layout's redirect-on-unauthenticated only
+ * runs for a real page *render*, not for a direct action invocation. Every
+ * exported admin action must call this itself; layout-level redirect alone is
+ * not enough.
+ */
+export async function requireAdmin(): Promise<void> {
+  if (!(await isAdminAuthed())) {
+    throw new Error("Not authenticated");
+  }
+}
