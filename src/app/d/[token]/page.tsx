@@ -120,6 +120,16 @@ export default async function SubAccountDashboard({ params, searchParams }: Page
                     {brand.failureReason && (
                       <p className="mt-2 rounded-md bg-red-50 p-3 text-sm text-red-700">{brand.failureReason}</p>
                     )}
+                    {brand.stage === "FAILED" && brand.rawPayload != null && (
+                      <details className="mt-2">
+                        <summary className="cursor-pointer text-xs font-medium text-red-700 underline">
+                          Raw provider response (no structured failure reason was captured)
+                        </summary>
+                        <pre className="mt-2 max-h-64 overflow-auto rounded-md bg-neutral-900 p-3 text-xs text-neutral-100">
+                          {JSON.stringify(brand.rawPayload, null, 2)}
+                        </pre>
+                      </details>
+                    )}
                   </li>
                 ))}
               </ul>
