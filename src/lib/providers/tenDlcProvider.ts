@@ -185,10 +185,23 @@ export class TenDlcProvider implements ProviderAdapter {
       "GET",
       `${this.config.trustHubBase}/v1/CustomerProfiles/${providerBrandId}`
     );
+    // The profile itself carries no failure reason (its `errors` field is routinely
+    // null even when rejected) — the actual policy-check results live on this
+    // sub-resource. Best-effort: a profile with no evaluations yet shouldn't block
+    // reporting the profile's own status.
+    let evaluations: unknown;
+    try {
+      evaluations = await this.client.request(
+        "GET",
+        `${this.config.trustHubBase}/v1/CustomerProfiles/${providerBrandId}/Evaluations`
+      );
+    } catch {
+      // ignore
+    }
     return {
       providerBrandId: profile.sid,
       stage: profile.status === "twilio-rejected" ? "FAILED" : "PENDING_REVIEW",
-      raw: profile,
+      raw: { profile, evaluations },
     };
   }
 
