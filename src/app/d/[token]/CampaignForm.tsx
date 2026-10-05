@@ -2,7 +2,7 @@
 
 import { useActionState, useRef } from "react";
 import { submitCampaign, type FormState } from "./actions";
-import { marketingCampaignTemplate } from "@/lib/campaignTemplate";
+import { campaignTemplateFor } from "@/lib/campaignTemplate";
 import { CAMPAIGN_USE_CASES } from "@/lib/campaignUseCases";
 
 const initialState: FormState = {};
@@ -33,9 +33,10 @@ export function CampaignForm({
   const optoutMessageRef = useRef<HTMLTextAreaElement>(null);
   const helpMessageRef = useRef<HTMLTextAreaElement>(null);
 
-  function applyStandardTemplate() {
+  function applyTemplate(useCase: string) {
     if (!subdomain) return;
-    const t = marketingCampaignTemplate(businessName, subdomain);
+    const t = campaignTemplateFor(useCase, businessName, subdomain);
+    if (!t) return;
     if (useCaseRef.current) useCaseRef.current.value = t.useCase;
     if (descriptionRef.current) descriptionRef.current.value = t.description;
     if (optInDetailsRef.current) optInDetailsRef.current.value = t.optInDetails;
@@ -52,13 +53,22 @@ export function CampaignForm({
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-medium text-neutral-900">Submit a new campaign</h3>
         {subdomain && (
-          <button
-            type="button"
-            onClick={applyStandardTemplate}
-            className="text-xs font-medium text-primary underline"
-          >
-            Use standard Marketing template
-          </button>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => applyTemplate("MARKETING")}
+              className="text-xs font-medium text-primary underline"
+            >
+              Use standard Marketing template
+            </button>
+            <button
+              type="button"
+              onClick={() => applyTemplate("LOW_VOLUME")}
+              className="text-xs font-medium text-primary underline"
+            >
+              Use standard Low Volume template
+            </button>
+          </div>
         )}
       </div>
 
