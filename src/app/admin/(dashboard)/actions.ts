@@ -322,6 +322,55 @@ export async function setProviderCredentials(subAccountId: string, formData: For
   revalidatePath(`/admin/${subAccountId}`);
 }
 
+/**
+ * Adopts a brand that already exists at the provider (e.g. registered
+ * manually in the provider's own console, outside our submission flow) into
+ * our tracking, instead of requiring it to have been created through
+ * submitBrand. Immediately syncs real status so stage reflects reality
+ * right away rather than showing NOT_SUBMITTED/stale until the next sync.
+ */
+export async function adoptProviderBrand(subAccountId: string, formData: FormData) {
+  await requireAdmin();
+  const provider = String(formData.get("provider")) as "TWILIO" | "TEXTGRID";
+  const providerBrandId = String(formData.get("providerBrandId") || "").trim();
+  if (!providerBrandId) return;
+
+  const subAccount = await db.subAccount.findUniqueOrThrow({ where: { id: subAccountId }, include: { brands: true } });
+  const existing = subAccount.brands.find((b) => b.provider === provider);
+
+  try {
+    const providerAdapter = getProvider(provider, subAccount.providerAccountSid, subAccount.providerAuthToken);
+    const status = await providerAdapter.getBrandStatus(providerBrandId);
+
+    await db.brand.upsert({
+      where: { subAccountId_provider: { subAccountId, provider } },
+      create: {
+        subAccountId,
+        provider,
+        providerBrandId: status.providerBrandId,
+        legalBusinessName: existing?.legalBusinessName ?? subAccount.businessName,
+        stage: status.stage,
+        failureReason: status.failureReason,
+        approvedAt: status.stage === "APPROVED" ? new Date() : null,
+        submittedAt: new Date(),
+        rawPayload: status.raw as object,
+      },
+      update: {
+        providerBrandId: status.providerBrandId,
+        stage: status.stage,
+        failureReason: status.failureReason,
+        approvedAt: status.stage === "APPROVED" ? new Date() : existing?.approvedAt,
+        rawPayload: status.raw as object,
+      },
+    });
+    await logEvent(subAccountId, "BRAND", `Adopted existing ${provider} brand ${providerBrandId} — status: ${status.stage}.`);
+  } catch (err) {
+    await logEvent(subAccountId, "BRAND", `Failed to adopt ${provider} brand ${providerBrandId}: ${errMessage(err)}`);
+  }
+
+  revalidatePath(`/admin/${subAccountId}`);
+}
+
 function errMessage(err: unknown) {
   return err instanceof Error ? err.message : "Unknown error";
 }

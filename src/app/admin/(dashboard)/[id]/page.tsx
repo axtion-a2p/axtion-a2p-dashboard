@@ -17,6 +17,7 @@ import {
   updateCampaignDetails,
   purchaseAndAssignNumber,
   setProviderCredentials,
+  adoptProviderBrand,
 } from "../actions";
 
 const PROVIDER_LABELS: Record<string, string> = { TEXTGRID: "TextGrid", TWILIO: "Twilio" };
@@ -197,6 +198,34 @@ export default async function AdminSubAccountPage({ params, searchParams }: Page
             ))}
           </ul>
         )}
+
+        <details className="mt-4">
+          <summary className="cursor-pointer text-xs font-medium text-primary underline">
+            Adopt an existing provider brand ID
+          </summary>
+          <p className="mt-2 text-xs text-neutral-500">
+            For a brand registered directly in the provider's own console instead of through this dashboard —
+            pulls its real current status immediately.
+          </p>
+          <form action={adoptProviderBrand.bind(null, subAccount.id)} className="mt-3 flex items-center gap-2">
+            <select name="provider" className="rounded-md border border-neutral-300 px-2 py-1.5 text-xs">
+              {PROVIDERS.map((p) => (
+                <option key={p.value} value={p.value}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+            <input
+              name="providerBrandId"
+              type="text"
+              placeholder="e.g. BNff1a5fcfeb7e05dbe3e320a40628240c"
+              className="flex-1 rounded-md border border-neutral-300 px-2 py-1.5 text-xs"
+            />
+            <button className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-white hover:bg-primary-hover">
+              Adopt
+            </button>
+          </form>
+        </details>
       </section>
 
       <section id="campaigns" className="mb-8 rounded-xl border border-neutral-200 p-6">
