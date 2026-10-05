@@ -130,7 +130,7 @@ export async function submitBrand(token: string, _prev: FormState, formData: For
       data: {
         subAccountId: subAccount.id,
         entityType: "BRAND",
-        message: `Brand submitted to ${d.provider} — status: ${status.stage}.`,
+        message: `Brand submitted to ${d.provider} (account override on file: ${subAccount.providerAccountSid ?? "none — using platform default"}) — status: ${status.stage}.`,
         actor: "system",
       },
     });
