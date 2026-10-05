@@ -21,6 +21,17 @@ export default async function AdminIndexPage({ searchParams }: PageProps<"/admin
     textgrid: subAccounts.filter((s) => s.provider === "TEXTGRID").length,
   };
 
+  // Two rows for the same business is exactly what caused a real incident: a
+  // provider-account override got saved on an orphaned duplicate while every
+  // actual submission ran through the other, undetected for days. Sign-up now
+  // blocks creating a new duplicate, but surface any that already exist.
+  const nameCounts = new Map<string, number>();
+  for (const s of subAccounts) {
+    const key = s.businessName.trim().toLowerCase();
+    nameCounts.set(key, (nameCounts.get(key) ?? 0) + 1);
+  }
+  const duplicateNames = new Set(Array.from(subAccounts, (s) => s.businessName.trim().toLowerCase()).filter((n) => (nameCounts.get(n) ?? 0) > 1));
+
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
       <div className="mb-8 flex items-center justify-between">
@@ -44,6 +55,14 @@ export default async function AdminIndexPage({ searchParams }: PageProps<"/admin
         <FilterLink label={`TextGrid (${counts.textgrid})`} href="/admin?provider=TEXTGRID" active={providerFilter === "TEXTGRID"} />
       </div>
 
+      {duplicateNames.size > 0 && (
+        <div className="mb-6 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+          <strong>Duplicate business name(s) detected</strong> — rows marked ⚠ below share a name with another
+          row. A provider-account override or submission on the wrong one of these can go unnoticed for days.
+          Prefer using one row's "Submit via" dropdown over creating a second row for the same business.
+        </div>
+      )}
+
       <div className="overflow-hidden rounded-xl border border-neutral-200">
         <table className="w-full text-sm">
           <thead className="bg-neutral-50 text-left text-neutral-500">
@@ -61,7 +80,14 @@ export default async function AdminIndexPage({ searchParams }: PageProps<"/admin
             {subAccounts.map((s) => (
               <tr key={s.id} className="border-t border-neutral-100">
                 <td className="px-4 py-3">
-                  <p className="font-medium text-neutral-900">{s.businessName}</p>
+                  <p className="font-medium text-neutral-900">
+                    {duplicateNames.has(s.businessName.trim().toLowerCase()) && (
+                      <span title="Duplicate business name — see banner above" className="mr-1 text-amber-600">
+                        ⚠
+                      </span>
+                    )}
+                    {s.businessName}
+                  </p>
                   <p className="text-xs text-neutral-500">{s.contactEmail}</p>
                 </td>
                 <td className="px-4 py-3">{s.provider === "TWILIO" ? "Twilio" : "TextGrid"} (default)</td>

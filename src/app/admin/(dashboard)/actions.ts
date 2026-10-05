@@ -294,11 +294,29 @@ export async function setProviderCredentials(subAccountId: string, formData: For
     // A blank token keeps whatever's already stored, so updating just the SID
     // doesn't require re-typing a token that's already set.
     const existing = await db.subAccount.findUniqueOrThrow({ where: { id: subAccountId } });
+    const finalToken = tokenInput || existing.providerAuthToken;
     await db.subAccount.update({
       where: { id: subAccountId },
-      data: { providerAccountSid: sidInput, providerAuthToken: tokenInput || existing.providerAuthToken },
+      data: { providerAccountSid: sidInput, providerAuthToken: finalToken },
     });
-    await logEvent(subAccountId, "SUB_ACCOUNT", `Dedicated provider account set: ${sidInput}`);
+
+    // Verify immediately instead of silently storing a value that might be
+    // wrong — a saved-but-non-functional override once went undetected for
+    // days. This can't catch "saved on the wrong sub-account row" (that's a
+    // signup-time dedupe problem, handled separately), but it does catch bad
+    // credentials, typos, and auth mismatches on the spot.
+    const detectedProvider: "TWILIO" | "TEXTGRID" = sidInput.startsWith("AC") ? "TWILIO" : "TEXTGRID";
+    try {
+      const provider = getProvider(detectedProvider, sidInput, finalToken);
+      await provider.listPhoneNumbers();
+      await logEvent(subAccountId, "SUB_ACCOUNT", `Dedicated provider account set and verified: ${sidInput} (${detectedProvider}, auth OK).`);
+    } catch (err) {
+      await logEvent(
+        subAccountId,
+        "SUB_ACCOUNT",
+        `Dedicated provider account set: ${sidInput} — but verification FAILED: ${errMessage(err)}. Double-check the SID/token.`
+      );
+    }
   }
 
   revalidatePath(`/admin/${subAccountId}`);

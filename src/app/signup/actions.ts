@@ -33,6 +33,21 @@ export async function createSubAccount(_prev: SignupState, formData: FormData): 
     return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
 
+  // A sub-account can hold a brand under either provider (or both) — there's no
+  // reason to ever need two rows for the same business anymore. Two rows for one
+  // client is exactly what caused a real incident: a provider-account override
+  // got saved on the "wrong" (older, orphaned) row while all actual submissions
+  // ran through the other, and the mismatch went undetected for days.
+  const existing = await db.subAccount.findFirst({
+    where: { businessName: { equals: parsed.data.businessName, mode: "insensitive" } },
+  });
+  if (existing) {
+    const base = process.env.PUBLIC_APP_URL || "";
+    return {
+      error: `A sub-account for "${existing.businessName}" already exists — use its existing dashboard (${base}/d/${existing.token}) instead of creating a second one.`,
+    };
+  }
+
   const token = generateSubAccountToken();
   const subdomain = await generateUniqueSubdomain(parsed.data.businessName);
 
