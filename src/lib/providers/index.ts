@@ -51,7 +51,6 @@ export function getProvider(
       apiBase: process.env.TWILIO_API_BASE || "https://api.twilio.com",
       trustHubBase: process.env.TWILIO_TRUSTHUB_BASE || "https://trusthub.twilio.com",
       messagingBase: process.env.TWILIO_MESSAGING_BASE || "https://messaging.twilio.com",
-      primaryBusinessProfileSid: required("TWILIO_PRIMARY_BUSINESS_PROFILE_SID"),
       statusEmail: required("TWILIO_STATUS_EMAIL"),
     });
   }

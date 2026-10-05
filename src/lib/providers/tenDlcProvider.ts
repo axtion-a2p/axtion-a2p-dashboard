@@ -18,7 +18,18 @@ import type {
   ProviderPhoneNumber,
 } from "./types";
 
+// Our A2P profile is Twilio's own "Secondary Customer Profile of type Business"
+// policy — confirmed via GET /v1/Policies/{A2P_POLICY_SID}. It unconditionally
+// requires an EntityAssignment to an approved/in-review Primary Customer Profile
+// (one of the business/nonprofit/government variants) to pass evaluation.
 const A2P_POLICY_SID = "RNdfbf3fae0e1107f8aded0e7cead80bf5";
+// "Primary Customer Profile of type Business" — found via GET /v1/Policies?PageSize=1000.
+const PRIMARY_POLICY_SID = "RN6433641899984f951173ef1738c3bdd0";
+// Twilio rejects POST /v1/CustomerProfiles with this PolicySid via the API
+// ("This operation is restricted via API for Primary Customer Profiles. Use
+// Twilio Console instead.") — a Primary profile can only be created by a human
+// in Trust Hub, once per Twilio (sub)account. Our code can only look one up.
+const PRIMARY_PROFILE_ACCEPTABLE_STATUSES = new Set(["twilio-approved", "pending-review"]);
 
 export type TenDlcProviderConfig = {
   /** Account SID (AC...) used in REST URL paths. */
@@ -30,8 +41,6 @@ export type TenDlcProviderConfig = {
   apiBase: string; // core REST API (Addresses, IncomingPhoneNumbers)
   trustHubBase: string; // CustomerProfiles, EndUsers, SupportingDocuments
   messagingBase: string; // Services, BrandRegistrations, Usa2p
-  /** ISV/reseller's own already-Twilio-approved primary Business Profile SID. One-time setup in the console. */
-  primaryBusinessProfileSid: string;
   /** Email that receives Trust Hub status-change notifications. Must be the ISV's own, not the end customer's. */
   statusEmail: string;
 };
@@ -111,8 +120,34 @@ export class TenDlcProvider implements ProviderAdapter {
     );
   }
 
+  /**
+   * Finds this account's existing Primary Customer Profile (of type Business).
+   * Twilio blocks creating one via the API, so it must already exist — a human
+   * created it once in Trust Hub Console (Customer Profiles > Create new >
+   * Business Profile, not the A2P/Secondary option).
+   */
+  private async findExistingPrimaryProfile(): Promise<string | undefined> {
+    const result = await this.client.request<{
+      results: { sid: string; policy_sid: string; status: string }[];
+    }>("GET", `${this.config.trustHubBase}/v1/CustomerProfiles?PageSize=50`);
+    const match = result.results.find(
+      (p) => p.policy_sid === PRIMARY_POLICY_SID && PRIMARY_PROFILE_ACCEPTABLE_STATUSES.has(p.status)
+    );
+    return match?.sid;
+  }
+
   async submitBrand(input: BrandInput): Promise<BrandStatus> {
     const friendlyBase = input.legalBusinessName;
+
+    const primaryProfileSid = await this.findExistingPrimaryProfile();
+    if (!primaryProfileSid) {
+      throw new Error(
+        "No approved or in-review Primary Business Profile found on this Twilio account. Twilio only allows " +
+          "creating a Primary Customer Profile through Trust Hub Console, not the API — in Twilio Console, go to " +
+          "Trust Hub > Customer Profiles > Create new, choose \"Business Profile\" (not the A2P one), fill in the " +
+          "same business details, and submit it. Once that exists, resubmit this brand."
+      );
+    }
 
     const profile = await this.createCustomerProfile(`${friendlyBase} - A2P Profile`);
 
@@ -142,7 +177,7 @@ export class TenDlcProvider implements ProviderAdapter {
     const addressDoc = await this.createAddressSupportingDocument(`${friendlyBase} - Address`, address.sid);
     await this.attachEntity(profile.sid, addressDoc.sid);
 
-    await this.attachEntity(profile.sid, this.config.primaryBusinessProfileSid);
+    await this.attachEntity(profile.sid, primaryProfileSid);
 
     const evaluation = await this.evaluateProfile(profile.sid);
     await this.submitProfileForReview(profile.sid);
@@ -159,12 +194,12 @@ export class TenDlcProvider implements ProviderAdapter {
   }
 
   /** Call once a secondary CustomerProfile (providerBrandId) has reached twilio-approved. */
-  async createBrandRegistration(a2pProfileBundleSid: string): Promise<BrandStatus> {
+  async createBrandRegistration(primaryProfileBundleSid: string, a2pProfileBundleSid: string): Promise<BrandStatus> {
     const brand = await this.client.request<{ sid: string; status: string; errors?: unknown[]; failure_reason?: string }>(
       "POST",
       `${this.config.messagingBase}/v1/a2p/BrandRegistrations`,
       {
-        CustomerProfileBundleSid: this.config.primaryBusinessProfileSid,
+        CustomerProfileBundleSid: primaryProfileBundleSid,
         A2PProfileBundleSid: a2pProfileBundleSid,
       }
     );
