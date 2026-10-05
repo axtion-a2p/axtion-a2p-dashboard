@@ -371,6 +371,60 @@ export async function adoptProviderBrand(subAccountId: string, formData: FormDat
   revalidatePath(`/admin/${subAccountId}`);
 }
 
+/**
+ * Adopts a campaign that already exists at the provider (e.g. submitted
+ * directly against a provider-side brand outside our submitCampaign flow)
+ * into our tracking. Pulls the real description/sample messages/etc. straight
+ * from the provider's own record rather than asking the admin to retype them.
+ */
+export async function adoptProviderCampaign(subAccountId: string, formData: FormData) {
+  await requireAdmin();
+  const provider = String(formData.get("provider")) as "TWILIO" | "TEXTGRID";
+  const messagingServiceSid = String(formData.get("messagingServiceSid") || "").trim();
+  const providerCampaignId = String(formData.get("providerCampaignId") || "").trim();
+  if (!messagingServiceSid || !providerCampaignId) return;
+
+  const subAccount = await db.subAccount.findUniqueOrThrow({ where: { id: subAccountId }, include: { campaigns: true } });
+  const existing = subAccount.campaigns.find((c) => c.provider === provider && c.providerCampaignId === providerCampaignId);
+
+  try {
+    const providerAdapter = getProvider(provider, subAccount.providerAccountSid, subAccount.providerAuthToken);
+    const status = await providerAdapter.getCampaignStatus(messagingServiceSid, providerCampaignId);
+    const raw = status.raw as Record<string, unknown>;
+
+    const fields = {
+      messagingServiceSid,
+      useCase: String(raw.us_app_to_person_usecase ?? raw.usecase ?? "UNKNOWN"),
+      description: String(raw.description ?? ""),
+      sampleMessages: Array.isArray(raw.message_samples) ? raw.message_samples : [],
+      optInDetails: typeof raw.message_flow === "string" ? raw.message_flow : null,
+      hasEmbeddedLinks: Boolean(raw.has_embedded_links),
+      hasEmbeddedPhone: Boolean(raw.has_embedded_phone),
+      optinMessage: typeof raw.opt_in_message === "string" ? raw.opt_in_message : null,
+      optoutMessage: typeof raw.opt_out_message === "string" ? raw.opt_out_message : null,
+      helpMessage: typeof raw.help_message === "string" ? raw.help_message : null,
+      stage: status.stage,
+      failureReason: status.failureReason,
+      health: healthForStatus(status),
+      approvedAt: status.stage === "APPROVED" ? new Date() : existing?.approvedAt ?? null,
+      rawPayload: status.raw as object,
+    };
+
+    if (existing) {
+      await db.campaign.update({ where: { id: existing.id }, data: fields });
+    } else {
+      await db.campaign.create({
+        data: { subAccountId, provider, providerCampaignId, submittedAt: new Date(), ...fields },
+      });
+    }
+    await logEvent(subAccountId, "CAMPAIGN", `Adopted existing ${provider} campaign ${providerCampaignId} — status: ${status.stage}.`);
+  } catch (err) {
+    await logEvent(subAccountId, "CAMPAIGN", `Failed to adopt ${provider} campaign ${providerCampaignId}: ${errMessage(err)}`);
+  }
+
+  revalidatePath(`/admin/${subAccountId}`);
+}
+
 function errMessage(err: unknown) {
   return err instanceof Error ? err.message : "Unknown error";
 }

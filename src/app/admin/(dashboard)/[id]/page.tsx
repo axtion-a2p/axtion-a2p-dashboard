@@ -18,6 +18,7 @@ import {
   purchaseAndAssignNumber,
   setProviderCredentials,
   adoptProviderBrand,
+  adoptProviderCampaign,
 } from "../actions";
 
 const PROVIDER_LABELS: Record<string, string> = { TEXTGRID: "TextGrid", TWILIO: "Twilio" };
@@ -423,6 +424,40 @@ export default async function AdminSubAccountPage({ params, searchParams }: Page
             </li>
           ))}
         </ul>
+
+        <details className="mt-4">
+          <summary className="cursor-pointer text-xs font-medium text-primary underline">
+            Adopt an existing provider campaign ID
+          </summary>
+          <p className="mt-2 text-xs text-neutral-500">
+            For a campaign submitted directly at the provider instead of through this dashboard — pulls its real
+            description, sample messages, and status straight from the provider's own record.
+          </p>
+          <form action={adoptProviderCampaign.bind(null, subAccount.id)} className="mt-3 flex items-center gap-2">
+            <select name="provider" className="rounded-md border border-neutral-300 px-2 py-1.5 text-xs">
+              {PROVIDERS.map((p) => (
+                <option key={p.value} value={p.value}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+            <input
+              name="messagingServiceSid"
+              type="text"
+              placeholder="Messaging Service SID, e.g. MGd079d56d41cf448e42c918a2bf758409"
+              className="flex-1 rounded-md border border-neutral-300 px-2 py-1.5 text-xs"
+            />
+            <input
+              name="providerCampaignId"
+              type="text"
+              placeholder="Campaign SID, e.g. QE2c6890da8086d771620e9b13fadeba0b"
+              className="flex-1 rounded-md border border-neutral-300 px-2 py-1.5 text-xs"
+            />
+            <button className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-white hover:bg-primary-hover">
+              Adopt
+            </button>
+          </form>
+        </details>
       </section>
 
       <section id="numbers" className="mb-8 rounded-xl border border-neutral-200 p-6">
