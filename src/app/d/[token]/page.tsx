@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { BrandForm } from "./BrandForm";
 import { CampaignForm } from "./CampaignForm";
 import { NumbersPanel } from "./NumbersPanel";
+import { editCampaign } from "./actions";
 import { Badge } from "@/components/Badge";
 import { BrandKicker } from "@/components/Brand";
 import { stageColor, healthColor, stageLabel } from "@/lib/status";
@@ -198,6 +199,138 @@ export default async function SubAccountDashboard({ params, searchParams }: Page
                 )}
                 {c.failureReason && (
                   <p className="mt-2 rounded-md bg-red-50 p-2 text-xs text-red-700">{c.failureReason}</p>
+                )}
+
+                {c.providerCampaignId && c.messagingServiceSid && (
+                  <details className="mt-3">
+                    <summary className="cursor-pointer text-xs font-medium text-primary underline">
+                      Amend this campaign (same campaign ID — fixes without creating a new one)
+                    </summary>
+                    <form action={editCampaign.bind(null, token, c.id)} className="mt-3 space-y-3">
+                      <div>
+                        <label className="block text-xs text-neutral-900" htmlFor={`description-${c.id}`}>
+                          Campaign description
+                        </label>
+                        <textarea
+                          id={`description-${c.id}`}
+                          name="description"
+                          defaultValue={c.description}
+                          required
+                          rows={2}
+                          minLength={40}
+                          className="mt-1 w-full rounded-md border border-neutral-300 px-2 py-1.5 text-xs"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-neutral-900" htmlFor={`optInDetails-${c.id}`}>
+                          How do customers opt in?
+                        </label>
+                        <textarea
+                          id={`optInDetails-${c.id}`}
+                          name="optInDetails"
+                          defaultValue={c.optInDetails ?? ""}
+                          required
+                          rows={2}
+                          minLength={40}
+                          className="mt-1 w-full rounded-md border border-neutral-300 px-2 py-1.5 text-xs"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-neutral-900" htmlFor={`sampleMessages-${c.id}`}>
+                          Sample messages (one per line, up to 5)
+                        </label>
+                        <textarea
+                          id={`sampleMessages-${c.id}`}
+                          name="sampleMessages"
+                          defaultValue={(c.sampleMessages as string[]).join("\n")}
+                          required
+                          rows={4}
+                          className="mt-1 w-full rounded-md border border-neutral-300 px-2 py-1.5 text-xs"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs text-neutral-900" htmlFor={`terms-${c.id}`}>
+                            Terms &amp; Conditions URL
+                          </label>
+                          <input
+                            id={`terms-${c.id}`}
+                            name="termsAndConditionsLink"
+                            type="url"
+                            defaultValue={c.termsAndConditionsLink ?? ""}
+                            required
+                            className="mt-1 w-full rounded-md border border-neutral-300 px-2 py-1.5 text-xs"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-neutral-900" htmlFor={`privacy-${c.id}`}>
+                            Privacy Policy URL
+                          </label>
+                          <input
+                            id={`privacy-${c.id}`}
+                            name="privacyPolicyLink"
+                            type="url"
+                            defaultValue={c.privacyPolicyLink ?? ""}
+                            required
+                            className="mt-1 w-full rounded-md border border-neutral-300 px-2 py-1.5 text-xs"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs text-neutral-900" htmlFor={`optinMessage-${c.id}`}>
+                          Opt-in confirmation message
+                        </label>
+                        <textarea
+                          id={`optinMessage-${c.id}`}
+                          name="optinMessage"
+                          defaultValue={c.optinMessage ?? ""}
+                          required
+                          rows={2}
+                          minLength={20}
+                          className="mt-1 w-full rounded-md border border-neutral-300 px-2 py-1.5 text-xs"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-neutral-900" htmlFor={`optoutMessage-${c.id}`}>
+                          Opt-out confirmation message
+                        </label>
+                        <textarea
+                          id={`optoutMessage-${c.id}`}
+                          name="optoutMessage"
+                          defaultValue={c.optoutMessage ?? ""}
+                          required
+                          rows={2}
+                          minLength={20}
+                          className="mt-1 w-full rounded-md border border-neutral-300 px-2 py-1.5 text-xs"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-neutral-900" htmlFor={`helpMessage-${c.id}`}>
+                          Help message
+                        </label>
+                        <textarea
+                          id={`helpMessage-${c.id}`}
+                          name="helpMessage"
+                          defaultValue={c.helpMessage ?? ""}
+                          required
+                          rows={2}
+                          minLength={20}
+                          className="mt-1 w-full rounded-md border border-neutral-300 px-2 py-1.5 text-xs"
+                        />
+                      </div>
+                      <div className="flex gap-4 text-xs text-neutral-700">
+                        <label className="flex items-center gap-1.5">
+                          <input type="checkbox" name="hasEmbeddedLinks" defaultChecked={c.hasEmbeddedLinks} /> Includes links
+                        </label>
+                        <label className="flex items-center gap-1.5">
+                          <input type="checkbox" name="hasEmbeddedPhone" defaultChecked={c.hasEmbeddedPhone} /> Includes phone numbers
+                        </label>
+                      </div>
+                      <button className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-white hover:bg-primary-hover">
+                        Save &amp; resubmit (same campaign)
+                      </button>
+                    </form>
+                  </details>
                 )}
               </li>
             ))}

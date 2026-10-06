@@ -255,6 +255,91 @@ export async function submitCampaign(token: string, _prev: FormState, formData: 
   return { ok: true };
 }
 
+const campaignEditSchema = campaignSchema.omit({ provider: true, useCase: true });
+
+/**
+ * Amends an already-submitted campaign in place (same provider campaign SID,
+ * same Messaging Service) instead of creating a new one. Token-scoped, no
+ * login required — this is the client-facing equivalent of the admin-only
+ * updateCampaignDetails action, so a rejection can be fixed and resubmitted
+ * without proliferating a fresh campaign object on every attempt.
+ */
+export async function editCampaign(token: string, campaignId: string, formData: FormData) {
+  const subAccount = await requireSubAccount(token);
+  const campaign = await db.campaign.findUniqueOrThrow({ where: { id: campaignId } });
+  if (campaign.subAccountId !== subAccount.id) throw new Error("That campaign doesn't belong to this sub-account.");
+  if (!campaign.providerCampaignId || !campaign.messagingServiceSid) {
+    throw new Error("Campaign has no provider campaign ID to amend.");
+  }
+
+  const parsed = campaignEditSchema.safeParse(Object.fromEntries(formData.entries()));
+  if (!parsed.success) {
+    await db.statusEvent.create({
+      data: { subAccountId: subAccount.id, entityType: "CAMPAIGN", message: `Campaign edit failed: ${parsed.error.issues[0]?.message ?? "Invalid input"}`, actor: "client" },
+    });
+    revalidatePath(`/d/${token}?tab=campaigns`);
+    return;
+  }
+
+  const d = parsed.data;
+  const sampleMessages = d.sampleMessages
+    .split("\n")
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .slice(0, 5);
+
+  try {
+    const provider = getProvider(campaign.provider, subAccount.providerAccountSid, subAccount.providerAuthToken);
+    const input: CampaignInput = {
+      messagingServiceSid: campaign.messagingServiceSid,
+      useCase: campaign.useCase,
+      description: d.description,
+      sampleMessages,
+      optInDetails: d.optInDetails,
+      hasEmbeddedLinks: d.hasEmbeddedLinks === "on",
+      hasEmbeddedPhone: d.hasEmbeddedPhone === "on",
+      termsAndConditionsLink: d.termsAndConditionsLink,
+      privacyPolicyLink: d.privacyPolicyLink,
+      optinMessage: d.optinMessage,
+      optoutMessage: d.optoutMessage,
+      helpMessage: d.helpMessage,
+    };
+
+    const status = await provider.updateCampaign(campaign.providerCampaignId, input);
+
+    await db.campaign.update({
+      where: { id: campaignId },
+      data: {
+        description: d.description,
+        sampleMessages,
+        optInDetails: d.optInDetails,
+        hasEmbeddedLinks: input.hasEmbeddedLinks,
+        hasEmbeddedPhone: input.hasEmbeddedPhone,
+        termsAndConditionsLink: d.termsAndConditionsLink,
+        privacyPolicyLink: d.privacyPolicyLink,
+        optinMessage: d.optinMessage,
+        optoutMessage: d.optoutMessage,
+        helpMessage: d.helpMessage,
+        stage: status.stage,
+        failureReason: status.failureReason,
+        health: healthForStatus(status),
+        rawPayload: status.raw as object,
+      },
+    });
+
+    await db.statusEvent.create({
+      data: { subAccountId: subAccount.id, entityType: "CAMPAIGN", message: `Campaign amended on ${campaign.provider} (same campaign ID, no new object) — status: ${status.stage}.`, actor: "client" },
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Edit failed";
+    await db.statusEvent.create({
+      data: { subAccountId: subAccount.id, entityType: "CAMPAIGN", message: `Campaign edit on ${campaign.provider} failed: ${message}`, actor: "client" },
+    });
+  }
+
+  revalidatePath(`/d/${token}?tab=campaigns`);
+}
+
 /** Self-serve: buy a number found via NumbersPanel's search and optionally attach it straight to one of this sub-account's own approved campaigns. */
 export async function purchaseAndAssignNumber(token: string, formData: FormData) {
   const providerName = String(formData.get("provider")) as "TWILIO" | "TEXTGRID";
