@@ -277,6 +277,11 @@ export class TenDlcProvider implements ProviderAdapter {
       HasEmbeddedLinks: input.hasEmbeddedLinks,
       HasEmbeddedPhone: input.hasEmbeddedPhone,
       MessageSamples: input.sampleMessages.slice(0, 5),
+      TermsAndConditionsUrl: input.termsAndConditionsLink,
+      PrivacyPolicyUrl: input.privacyPolicyLink,
+      OptInMessage: input.optinMessage,
+      OptOutMessage: input.optoutMessage,
+      HelpMessage: input.helpMessage,
     });
     return this.mapCampaignStatus(campaign);
   }
@@ -309,6 +314,11 @@ export class TenDlcProvider implements ProviderAdapter {
       HasEmbeddedLinks: input.hasEmbeddedLinks,
       HasEmbeddedPhone: input.hasEmbeddedPhone,
       MessageSamples: input.sampleMessages.slice(0, 5),
+      TermsAndConditionsUrl: input.termsAndConditionsLink,
+      PrivacyPolicyUrl: input.privacyPolicyLink,
+      OptInMessage: input.optinMessage,
+      OptOutMessage: input.optoutMessage,
+      HelpMessage: input.helpMessage,
     });
     return this.mapCampaignStatus(campaign);
   }

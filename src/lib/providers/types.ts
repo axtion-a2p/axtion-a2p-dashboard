@@ -50,18 +50,22 @@ export type CampaignInput = {
   hasEmbeddedLinks: boolean;
   hasEmbeddedPhone: boolean;
 
+  // Used by both providers — Twilio's Usa2p resource accepts these directly
+  // (TermsAndConditionsUrl, PrivacyPolicyUrl, OptInMessage, OptOutMessage,
+  // HelpMessage) and will reject a campaign as unverifiable without them.
+  termsAndConditionsLink?: string;
+  privacyPolicyLink?: string;
+  helpMessage?: string;
+  optinMessage?: string;
+  optoutMessage?: string;
+
   // TextGrid-only fields below. Twilio's provider ignores all of these. When
   // omitted, the TextGrid provider derives sensible defaults (see
   // textgridProvider.ts) so a submission still works without a UI change.
   subUsecases?: string[];
-  termsAndConditionsLink?: string;
-  privacyPolicyLink?: string;
   helpKeywords?: string;
-  helpMessage?: string;
   optinKeywords?: string;
-  optinMessage?: string;
   optoutKeywords?: string;
-  optoutMessage?: string;
   referenceId?: string;
   autoRenewal?: boolean;
 };
