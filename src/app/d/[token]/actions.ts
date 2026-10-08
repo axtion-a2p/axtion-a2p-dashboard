@@ -340,6 +340,68 @@ export async function editCampaign(token: string, campaignId: string, formData: 
   revalidatePath(`/d/${token}?tab=campaigns`);
 }
 
+/**
+ * Sends a draft campaign (stage NOT_SUBMITTED, captured up front via the
+ * intake form before the brand was approved) to the provider for the first
+ * time — updates that same row in place rather than creating a new one.
+ */
+export async function submitDraftCampaign(token: string, campaignId: string) {
+  const subAccount = await requireSubAccount(token);
+  const campaign = await db.campaign.findUniqueOrThrow({ where: { id: campaignId } });
+  if (campaign.subAccountId !== subAccount.id) throw new Error("That campaign doesn't belong to this sub-account.");
+  if (campaign.providerCampaignId) throw new Error("This campaign has already been submitted.");
+
+  const brand = await db.brand.findUnique({ where: { subAccountId_provider: { subAccountId: subAccount.id, provider: campaign.provider } } });
+  if (!brand || brand.stage !== "APPROVED" || !brand.providerBrandId) {
+    throw new Error(`The ${campaign.provider} brand must be approved before this draft campaign can be submitted.`);
+  }
+
+  try {
+    const provider = getProvider(campaign.provider, subAccount.providerAccountSid, subAccount.providerAuthToken);
+    const service = await provider.createMessagingService(`${subAccount.businessName} - Messaging Service`);
+
+    const input: CampaignInput = {
+      messagingServiceSid: service.sid,
+      useCase: campaign.useCase,
+      description: campaign.description,
+      sampleMessages: campaign.sampleMessages as string[],
+      optInDetails: campaign.optInDetails ?? undefined,
+      hasEmbeddedLinks: campaign.hasEmbeddedLinks,
+      hasEmbeddedPhone: campaign.hasEmbeddedPhone,
+      termsAndConditionsLink: campaign.termsAndConditionsLink ?? undefined,
+      privacyPolicyLink: campaign.privacyPolicyLink ?? undefined,
+      optinMessage: campaign.optinMessage ?? undefined,
+      optoutMessage: campaign.optoutMessage ?? undefined,
+      helpMessage: campaign.helpMessage ?? undefined,
+    };
+
+    const status = await provider.submitCampaign(brand.providerBrandId, input);
+    const messagingServiceSid = campaign.provider === "TEXTGRID" ? status.providerCampaignId : service.sid;
+
+    await db.campaign.update({
+      where: { id: campaignId },
+      data: {
+        providerCampaignId: status.providerCampaignId,
+        messagingServiceSid,
+        stage: status.stage,
+        health: healthForStatus(status),
+        submittedAt: new Date(),
+        rawPayload: status.raw as object,
+      },
+    });
+    await db.statusEvent.create({
+      data: { subAccountId: subAccount.id, entityType: "CAMPAIGN", message: `Draft campaign submitted to ${campaign.provider} — status: ${status.stage}.`, actor: "client" },
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Submission failed";
+    await db.statusEvent.create({
+      data: { subAccountId: subAccount.id, entityType: "CAMPAIGN", message: `Draft campaign submission to ${campaign.provider} failed: ${message}`, actor: "client" },
+    });
+  }
+
+  revalidatePath(`/d/${token}?tab=campaigns`);
+}
+
 /** Self-serve: buy a number found via NumbersPanel's search and optionally attach it straight to one of this sub-account's own approved campaigns. */
 export async function purchaseAndAssignNumber(token: string, formData: FormData) {
   const providerName = String(formData.get("provider")) as "TWILIO" | "TEXTGRID";

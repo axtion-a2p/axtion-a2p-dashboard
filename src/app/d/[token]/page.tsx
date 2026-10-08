@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { BrandForm } from "./BrandForm";
 import { CampaignForm } from "./CampaignForm";
 import { NumbersPanel } from "./NumbersPanel";
-import { editCampaign } from "./actions";
+import { editCampaign, submitDraftCampaign } from "./actions";
 import { Badge } from "@/components/Badge";
 import { BrandKicker } from "@/components/Brand";
 import { stageColor, healthColor, stageLabel } from "@/lib/status";
@@ -167,27 +167,39 @@ export default async function SubAccountDashboard({ params, searchParams }: Page
           )}
 
           <ul className="mb-6 space-y-3">
-            {subAccount.campaigns.map((c) => (
+            {subAccount.campaigns.map((c) => {
+              const isDraft = !c.providerCampaignId;
+              const brandForDraft = isDraft ? subAccount.brands.find((b) => b.provider === c.provider) : undefined;
+              const brandApproved = brandForDraft?.stage === "APPROVED";
+              return (
               <li key={c.id} className="rounded-lg border border-neutral-200 p-4">
                 <div className="flex items-center justify-between">
                   <p className="font-medium text-neutral-900">
                     {c.useCase} <span className="font-normal text-neutral-400">· {PROVIDER_LABELS[c.provider]}</span>
                   </p>
                   <div className="flex gap-2">
-                    <Badge text={stageLabel(c.stage)} className={stageColor[c.stage]} />
-                    <Badge text={stageLabel(c.health)} className={healthColor[c.health]} />
-                    {carrierStatusLabel(c) && (
-                      <Badge
-                        text={`Carrier: ${stageLabel(carrierStatusLabel(c)!)}`}
-                        className={carrierStatusColor[carrierStatusLabel(c)!] ?? "bg-neutral-100 text-neutral-600"}
-                      />
+                    {isDraft ? (
+                      <Badge text="Draft — not yet submitted" className="bg-neutral-100 text-neutral-600" />
+                    ) : (
+                      <>
+                        <Badge text={stageLabel(c.stage)} className={stageColor[c.stage]} />
+                        <Badge text={stageLabel(c.health)} className={healthColor[c.health]} />
+                        {carrierStatusLabel(c) && (
+                          <Badge
+                            text={`Carrier: ${stageLabel(carrierStatusLabel(c)!)}`}
+                            className={carrierStatusColor[carrierStatusLabel(c)!] ?? "bg-neutral-100 text-neutral-600"}
+                          />
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
                 <p className="mt-1 text-sm text-neutral-600">{c.description}</p>
-                <p className="mt-2 text-xs text-neutral-500">
-                  {c.phoneNumbers.length} phone number{c.phoneNumbers.length === 1 ? "" : "s"} assigned
-                </p>
+                {!isDraft && (
+                  <p className="mt-2 text-xs text-neutral-500">
+                    {c.phoneNumbers.length} phone number{c.phoneNumbers.length === 1 ? "" : "s"} assigned
+                  </p>
+                )}
                 {c.phoneNumbers.length > 0 && (
                   <ul className="mt-1 flex flex-wrap gap-2">
                     {c.phoneNumbers.map((n) => (
@@ -199,6 +211,23 @@ export default async function SubAccountDashboard({ params, searchParams }: Page
                 )}
                 {c.failureReason && (
                   <p className="mt-2 rounded-md bg-red-50 p-2 text-xs text-red-700">{c.failureReason}</p>
+                )}
+
+                {isDraft && (
+                  <form action={submitDraftCampaign.bind(null, token, c.id)} className="mt-3">
+                    <button
+                      type="submit"
+                      disabled={!brandApproved}
+                      className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-white hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      Submit this campaign
+                    </button>
+                    {!brandApproved && (
+                      <span className="ml-2 text-xs text-neutral-500">
+                        Waiting on the {PROVIDER_LABELS[c.provider]} brand to be approved first.
+                      </span>
+                    )}
+                  </form>
                 )}
 
                 {c.providerCampaignId && c.messagingServiceSid && (
@@ -333,7 +362,8 @@ export default async function SubAccountDashboard({ params, searchParams }: Page
                   </details>
                 )}
               </li>
-            ))}
+              );
+            })}
           </ul>
 
           {approvedProviders.length > 0 ? (

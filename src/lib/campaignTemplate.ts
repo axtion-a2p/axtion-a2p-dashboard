@@ -15,6 +15,20 @@ export type CampaignTemplate = {
 };
 
 /**
+ * The opt-in/opt-out/help confirmation texts are boilerplate required by
+ * every campaign regardless of use case — auto-generate them everywhere
+ * (templates, the intake form) instead of asking a client to write SMS
+ * compliance copy themselves, which is exactly where a submission goes wrong.
+ */
+export function standardOptInOutHelp(businessName: string): Pick<CampaignTemplate, "optinMessage" | "optoutMessage" | "helpMessage"> {
+  return {
+    optinMessage: `You are now subscribed to ${businessName} updates. Msg frequency may vary. Reply HELP for help, STOP to opt out. Msg&Data rates may apply.`,
+    optoutMessage: `You have been unsubscribed from ${businessName} updates and will not receive further messages. Reply START to resubscribe.`,
+    helpMessage: `${businessName} Support: Reply STOP to unsubscribe. Contact us for help. Msg&Data rates may apply.`,
+  };
+}
+
+/**
  * Standard, TCR-compliant "Marketing" campaign template. Reused across
  * clients rather than writing sample messages/opt-in language from scratch
  * for every submission — only the business name and subdomain vary.
@@ -34,9 +48,7 @@ export function marketingCampaignTemplate(businessName: string, subdomain: strin
     ],
     termsAndConditionsLink,
     privacyPolicyLink,
-    optinMessage: `You are now subscribed to ${businessName} marketing alerts. Msg frequency may vary. Reply HELP for help, STOP to opt out. Msg&Data rates may apply.`,
-    optoutMessage: `You have been unsubscribed from ${businessName} alerts and will not receive further messages. Reply START to resubscribe.`,
-    helpMessage: `${businessName} Support: Reply STOP to unsubscribe. Contact us for help. Msg&Data rates may apply.`,
+    ...standardOptInOutHelp(businessName),
     hasEmbeddedLinks: false,
     hasEmbeddedPhone: false,
   };
@@ -66,9 +78,7 @@ export function lowVolumeCampaignTemplate(businessName: string, subdomain: strin
     ],
     termsAndConditionsLink,
     privacyPolicyLink,
-    optinMessage: `You are now subscribed to ${businessName} updates. Msg frequency may vary. Reply HELP for help, STOP to opt out. Msg&Data rates may apply.`,
-    optoutMessage: `You have been unsubscribed from ${businessName} updates and will not receive further messages. Reply START to resubscribe.`,
-    helpMessage: `${businessName} Support: Reply STOP to unsubscribe. Contact us for help. Msg&Data rates may apply.`,
+    ...standardOptInOutHelp(businessName),
     hasEmbeddedLinks: false,
     hasEmbeddedPhone: false,
   };
