@@ -49,6 +49,18 @@ export function OptInForm({
         />
       </div>
       <div>
+        <label className="block text-sm font-medium text-slate-700" htmlFor="email">
+          Email address
+        </label>
+        <input
+          id="email"
+          name="email"
+          type="email"
+          required
+          className="mt-1.5 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-slate-900 focus:ring-1 focus:ring-slate-900"
+        />
+      </div>
+      <div>
         <label className="block text-sm font-medium text-slate-700" htmlFor="phone">
           Mobile phone number
         </label>
@@ -62,26 +74,33 @@ export function OptInForm({
         />
       </div>
 
+      <label className="flex items-start gap-2.5 border-t border-slate-200 pt-4 text-sm text-slate-600">
+        <input type="checkbox" name="agreeToTerms" required className="mt-1 h-4 w-4 accent-slate-900" />
+        <span>
+          I have read and agree to the{" "}
+          <Link href={`/privacy`} className="font-medium text-slate-900 underline">
+            Privacy Policy
+          </Link>{" "}
+          and{" "}
+          <Link href={`/terms`} className="font-medium text-slate-900 underline">
+            Terms of Service
+          </Link>
+          .
+        </span>
+      </label>
+
       <div className="space-y-3">
+        <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+          Optional — text message updates
+        </p>
         {categories.map((category) => (
           <label key={category} className="flex items-start gap-2.5 text-sm text-slate-600">
             <input
               type="checkbox"
               name={OPT_IN_CATEGORY_FIELD_NAME(category)}
-              required={categories.length === 1}
               className="mt-1 h-4 w-4 accent-slate-900"
             />
-            <span>
-              {optInStatement(category, businessName)} See our{" "}
-              <Link href={`/privacy`} className="font-medium text-slate-900 underline">
-                Privacy Policy
-              </Link>{" "}
-              and{" "}
-              <Link href={`/terms`} className="font-medium text-slate-900 underline">
-                Terms of Service
-              </Link>
-              .
-            </span>
+            <span>{optInStatement(category, businessName)}</span>
           </label>
         ))}
       </div>

@@ -217,8 +217,15 @@ model OptInSubmission {
   subAccount   SubAccount @relation(fields: [subAccountId], references: [id], onDelete: Cascade)
 
   name        String
+  // Nullable at the DB level only so this migration doesn't break on any
+  // pre-existing rows — required by the form/zod validation for every new submission.
+  email       String?
   phone       String
   consentText String
+  // SMS opt-in is its own, optional checkbox — a submission can exist with no
+  // SMS categories accepted (just contact info collected), matching the site's
+  // "Consent is not a condition of purchase" policy language.
+  smsOptedIn  Boolean @default(false)
 
   createdAt DateTime @default(now())
 
