@@ -8,6 +8,7 @@ import { subdomainUrl } from "@/lib/subdomain";
 import { CAMPAIGN_USE_CASES } from "@/lib/campaignUseCases";
 import { carrierStatusLabel, carrierStatusColor } from "@/lib/campaignHealth";
 import { getProvider } from "@/lib/providers";
+import { getCurrentAdminUser, getAccessibleSubAccountIds } from "@/lib/auth";
 import type { AvailableNumber } from "@/lib/providers/types";
 import {
   syncSubAccount,
@@ -32,6 +33,11 @@ export default async function AdminSubAccountPage({ params, searchParams }: Page
   const sp = await searchParams;
   const areaCode = typeof sp.areaCode === "string" ? sp.areaCode.trim() : undefined;
   const searchProvider = (typeof sp.provider === "string" ? sp.provider : "TEXTGRID") as "TEXTGRID" | "TWILIO";
+
+  const currentUser = await getCurrentAdminUser();
+  if (!currentUser) return null; // layout redirects unauthenticated requests
+  const accessibleIds = await getAccessibleSubAccountIds(currentUser);
+  if (!accessibleIds.includes(id)) notFound();
 
   const subAccount = await db.subAccount.findUnique({
     where: { id },

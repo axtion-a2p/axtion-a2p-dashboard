@@ -15,10 +15,19 @@ export default function AdminLoginPage() {
       <h1 className="mb-6 text-xl font-semibold text-neutral-900">Admin sign in</h1>
       <form action={formAction} className="space-y-4">
         <input
+          type="text"
+          name="username"
+          required
+          autoFocus
+          autoComplete="username"
+          placeholder="Username"
+          className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
+        />
+        <input
           type="password"
           name="password"
           required
-          autoFocus
+          autoComplete="current-password"
           placeholder="Password"
           className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
         />

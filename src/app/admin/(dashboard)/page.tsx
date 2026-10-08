@@ -3,14 +3,21 @@ import { db } from "@/lib/db";
 import { Badge } from "@/components/Badge";
 import { BrandKicker } from "@/components/Brand";
 import { stageColor, healthColor, stageLabel } from "@/lib/status";
+import { getCurrentAdminUser, getAccessibleSubAccountIds } from "@/lib/auth";
 import { logout } from "./actions";
 
 export default async function AdminIndexPage({ searchParams }: PageProps<"/admin">) {
   const sp = await searchParams;
   const providerFilter = typeof sp.provider === "string" ? sp.provider : undefined;
+  const currentUser = await getCurrentAdminUser();
+  if (!currentUser) return null; // layout redirects unauthenticated requests
+  const accessibleIds = await getAccessibleSubAccountIds(currentUser);
 
   const subAccounts = await db.subAccount.findMany({
-    where: providerFilter ? { provider: providerFilter as "TWILIO" | "TEXTGRID" } : undefined,
+    where: {
+      id: { in: accessibleIds },
+      ...(providerFilter ? { provider: providerFilter as "TWILIO" | "TEXTGRID" } : {}),
+    },
     include: { brands: true, campaigns: true, phoneNumbers: true },
     orderBy: { createdAt: "desc" },
   });
@@ -40,6 +47,14 @@ export default async function AdminIndexPage({ searchParams }: PageProps<"/admin
           <h1 className="text-2xl font-semibold text-neutral-900">All sub-accounts</h1>
         </div>
         <div className="flex items-center gap-4">
+          <Link href="/admin/delivery-report" className="text-sm font-medium text-primary underline">
+            Delivery report
+          </Link>
+          {currentUser?.role === "SUPER_ADMIN" && (
+            <Link href="/admin/users" className="text-sm font-medium text-primary underline">
+              Manage users
+            </Link>
+          )}
           <Link href="/signup" className="text-sm font-medium text-primary underline">
             + New sub-account
           </Link>

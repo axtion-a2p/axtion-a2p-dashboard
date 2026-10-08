@@ -44,6 +44,27 @@ enum PhoneStatus {
   FAILED
 }
 
+enum AdminRole {
+  SUPER_ADMIN
+  RESTRICTED
+}
+
+enum DeliveryChannel {
+  SMS
+  MMS
+  VOICE
+}
+
+// Our own 4-bucket mapping of Twilio's many raw statuses, for the delivery
+// report's pie chart and summary tables. UNKNOWN covers anything still in
+// flight (queued/sending/sent/ringing/in-progress/...) — not yet resolved.
+enum DeliveryStatus {
+  DELIVERED
+  UNDELIVERED
+  FAILED
+  UNKNOWN
+}
+
 model SubAccount {
   id              String   @id @default(cuid())
   token           String   @unique // powers the unguessable /d/[token] URL
@@ -74,11 +95,18 @@ model SubAccount {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Incremental delivery-report sync cursor — the cron/backfill re-pulls a
+  // rolling recent window (not just "since this timestamp") because a
+  // message's status can change after it's first fetched (queued -> delivered).
+  lastDeliverySyncAt DateTime?
+
   brands        Brand[]
   campaigns     Campaign[]
   phoneNumbers  PhoneNumber[]
   statusEvents  StatusEvent[]
   optInSubmissions OptInSubmission[]
+  deliveryEvents    DeliveryEvent[]
+  accessGrants      SubAccountAccess[]
 
   @@index([provider])
 }
@@ -205,6 +233,66 @@ model StatusEvent {
   createdAt DateTime @default(now())
 
   @@index([subAccountId, createdAt])
+}
+
+// Dashboard login — replaces the old single-ADMIN_PASSWORD-env-var scheme.
+// SUPER_ADMIN always sees spend and every sub-account; a RESTRICTED user only
+// sees the sub-accounts listed in accessGrants, and spend only if canViewSpend.
+model AdminUser {
+  id           String    @id @default(cuid())
+  username     String    @unique
+  passwordHash String // scrypt, stored as "saltHex:hashHex"
+  role         AdminRole @default(RESTRICTED)
+  canViewSpend Boolean   @default(false) // ignored (treated as true) for SUPER_ADMIN
+  lastLoginAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  accessGrants SubAccountAccess[]
+}
+
+model SubAccountAccess {
+  id     String @id @default(cuid())
+  userId String
+  user   AdminUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  subAccountId String
+  subAccount   SubAccount @relation(fields: [subAccountId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, subAccountId])
+  @@index([subAccountId])
+}
+
+// One row per Twilio Message or Call, synced from the REST API — powers the
+// delivery report (spend, sent/delivered/failed counts, reason codes, pie
+// chart). providerSid makes re-syncs idempotent (upsert), which matters
+// because a message's status/price can still change after first fetch.
+model DeliveryEvent {
+  id           String     @id @default(cuid())
+  subAccountId String
+  subAccount   SubAccount @relation(fields: [subAccountId], references: [id], onDelete: Cascade)
+
+  providerSid String          @unique // Twilio Message SID (SM/MM) or Call SID (CA)
+  channel     DeliveryChannel
+  direction   String // Twilio's own direction string, e.g. outbound-api, inbound, outbound-call
+  rawStatus   String // Twilio's own status string, kept verbatim for display/debugging
+  status      DeliveryStatus // our 4-bucket mapping of rawStatus, used for filtering/charts
+
+  errorCode    Int?
+  errorMessage String?
+
+  priceAmount Decimal? @db.Decimal(10, 5) // Twilio reports this as negative; stored as-is, abs() at display time
+  priceUnit   String?
+
+  occurredAt DateTime // date_sent ?? date_created (messages) / start_time (calls)
+  createdAt  DateTime @default(now())
+
+  @@index([subAccountId, occurredAt])
+  @@index([occurredAt])
+  @@index([status])
 }
 
 // A record of consent collected through a sub-account's public opt-in form

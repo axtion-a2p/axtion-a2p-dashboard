@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { syncSubAccount } from "@/app/admin/(dashboard)/actions";
+import { syncDeliveryEventsForAllTwilioSubAccounts } from "@/lib/delivery/sync";
 
 export const dynamic = "force-dynamic";
 
@@ -23,5 +24,9 @@ export async function GET(request: NextRequest) {
   const results = await Promise.allSettled(subAccounts.map((s) => syncSubAccount(s.id)));
   const failed = results.filter((r) => r.status === "rejected").length;
 
-  return NextResponse.json({ synced: subAccounts.length, failed });
+  // Re-pulls a rolling recent window of Twilio Messages/Calls for the delivery
+  // report — see src/lib/delivery/sync.ts for why this isn't a pure "since last sync".
+  const deliverySync = await syncDeliveryEventsForAllTwilioSubAccounts();
+
+  return NextResponse.json({ synced: subAccounts.length, failed, deliverySync });
 }
