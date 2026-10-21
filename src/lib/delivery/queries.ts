@@ -2,6 +2,13 @@ import { db } from "@/lib/db";
 import type { ResolvedRange } from "./range";
 import { errorCodeLabel } from "./statusMapping";
 
+// Twilio's own direction strings: "inbound" for received messages/calls;
+// everything else ("outbound-api", "outbound-call", "outbound-reply",
+// "outbound-dial") is something this account sent.
+function isInbound(direction: string): boolean {
+  return direction === "inbound";
+}
+
 export type DeliverySummaryRow = {
   subAccountId: string;
   businessName: string;
@@ -9,8 +16,10 @@ export type DeliverySummaryRow = {
   callsSent: number;
   smsSent: number;
   mmsSent: number;
+  received: number; // inbound messages/calls, any channel
   delivered: number;
-  failed: number; // FAILED + UNDELIVERED combined — see FailureBreakdownRow for the split
+  blocked: number; // Twilio status UNDELIVERED — accepted, then rejected by carrier/handset
+  error: number; // Twilio status FAILED — never reached the carrier (bad number, account issue, etc.)
 };
 
 export async function getDeliverySummary(
@@ -27,7 +36,7 @@ export async function getDeliverySummary(
       orderBy: { businessName: "asc" },
     }),
     db.deliveryEvent.groupBy({
-      by: ["subAccountId", "channel", "status"],
+      by: ["subAccountId", "channel", "status", "direction"],
       where: { subAccountId: { in: accessibleSubAccountIds }, occurredAt: { gte: range.from, lte: range.to } },
       _count: { _all: true },
       _sum: { priceAmount: true },
@@ -37,7 +46,18 @@ export async function getDeliverySummary(
   const rows = new Map<string, DeliverySummaryRow>(
     subAccounts.map((s) => [
       s.id,
-      { subAccountId: s.id, businessName: s.businessName, spend: canSeeSpend ? 0 : null, callsSent: 0, smsSent: 0, mmsSent: 0, delivered: 0, failed: 0 },
+      {
+        subAccountId: s.id,
+        businessName: s.businessName,
+        spend: canSeeSpend ? 0 : null,
+        callsSent: 0,
+        smsSent: 0,
+        mmsSent: 0,
+        received: 0,
+        delivered: 0,
+        blocked: 0,
+        error: 0,
+      },
     ])
   );
 
@@ -45,11 +65,18 @@ export async function getDeliverySummary(
     const row = rows.get(g.subAccountId);
     if (!row) continue;
     const count = g._count._all;
-    if (g.channel === "VOICE") row.callsSent += count;
-    if (g.channel === "SMS") row.smsSent += count;
-    if (g.channel === "MMS") row.mmsSent += count;
+    const inbound = isInbound(g.direction);
+
+    if (inbound) {
+      row.received += count;
+    } else {
+      if (g.channel === "VOICE") row.callsSent += count;
+      if (g.channel === "SMS") row.smsSent += count;
+      if (g.channel === "MMS") row.mmsSent += count;
+    }
     if (g.status === "DELIVERED") row.delivered += count;
-    if (g.status === "FAILED" || g.status === "UNDELIVERED") row.failed += count;
+    if (g.status === "UNDELIVERED") row.blocked += count;
+    if (g.status === "FAILED") row.error += count;
     if (canSeeSpend && row.spend !== null && g._sum.priceAmount) {
       row.spend += Math.abs(Number(g._sum.priceAmount));
     }
@@ -63,6 +90,7 @@ export type FailureBreakdownRow = {
   businessName: string;
   channel: "SMS" | "MMS" | "VOICE";
   status: "FAILED" | "UNDELIVERED";
+  statusLabel: "Error" | "Blocked";
   errorCode: number | null;
   reasonLabel: string;
   count: number;
@@ -95,33 +123,45 @@ export async function getFailureBreakdown(
       businessName: nameById.get(g.subAccountId) ?? "Unknown",
       channel: g.channel,
       status: g.status as "FAILED" | "UNDELIVERED",
+      statusLabel: (g.status === "UNDELIVERED" ? "Blocked" : "Error") as "Blocked" | "Error",
       errorCode: g.errorCode,
-      reasonLabel: errorCodeLabel(g.errorCode) ?? (g.status === "UNDELIVERED" ? "Undelivered (no error code reported)" : "Failed (no error code reported)"),
+      reasonLabel:
+        errorCodeLabel(g.errorCode) ??
+        (g.status === "UNDELIVERED" ? "Blocked (no error code reported)" : "Error (no error code reported)"),
       count: g._count._all,
     }))
     .sort((a, b) => b.count - a.count);
 }
 
 export type AccountMetrics = {
+  sent: number; // outbound messages/calls, any channel
+  received: number; // inbound messages/calls, any channel
   delivered: number;
-  failed: number;
-  breakdown: { delivered: number; undelivered: number; failed: number; unknown: number };
+  blocked: number; // UNDELIVERED
+  error: number; // FAILED
+  pending: number; // UNKNOWN — still in flight (queued/sending/sent/ringing/...)
 };
 
 export async function getAccountMetrics(subAccountId: string, range: ResolvedRange): Promise<AccountMetrics> {
   const groups = await db.deliveryEvent.groupBy({
-    by: ["status"],
+    by: ["status", "direction"],
     where: { subAccountId, occurredAt: { gte: range.from, lte: range.to } },
     _count: { _all: true },
   });
 
-  const breakdown = { delivered: 0, undelivered: 0, failed: 0, unknown: 0 };
+  const metrics: AccountMetrics = { sent: 0, received: 0, delivered: 0, blocked: 0, error: 0, pending: 0 };
   for (const g of groups) {
-    if (g.status === "DELIVERED") breakdown.delivered += g._count._all;
-    if (g.status === "UNDELIVERED") breakdown.undelivered += g._count._all;
-    if (g.status === "FAILED") breakdown.failed += g._count._all;
-    if (g.status === "UNKNOWN") breakdown.unknown += g._count._all;
+    const count = g._count._all;
+    if (isInbound(g.direction)) {
+      metrics.received += count;
+    } else {
+      metrics.sent += count;
+      if (g.status === "DELIVERED") metrics.delivered += count;
+      if (g.status === "UNDELIVERED") metrics.blocked += count;
+      if (g.status === "FAILED") metrics.error += count;
+      if (g.status === "UNKNOWN") metrics.pending += count;
+    }
   }
 
-  return { delivered: breakdown.delivered, failed: breakdown.failed + breakdown.undelivered, breakdown };
+  return metrics;
 }

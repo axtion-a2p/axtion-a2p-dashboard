@@ -7,6 +7,7 @@ import { resolveRange } from "@/lib/delivery/range";
 import { getDeliverySummary, getFailureBreakdown, getAccountMetrics } from "@/lib/delivery/queries";
 import { RangePicker } from "./RangePicker";
 import { AccountSelector } from "./AccountSelector";
+import { AutoRefresh } from "./AutoRefresh";
 import { syncNow } from "./actions";
 
 export default async function DeliveryReportPage({ searchParams }: PageProps<"/admin/delivery-report">) {
@@ -41,21 +42,38 @@ export default async function DeliveryReportPage({ searchParams }: PageProps<"/a
       callsSent: acc.callsSent + r.callsSent,
       smsSent: acc.smsSent + r.smsSent,
       mmsSent: acc.mmsSent + r.mmsSent,
+      received: acc.received + r.received,
       delivered: acc.delivered + r.delivered,
-      failed: acc.failed + r.failed,
+      blocked: acc.blocked + r.blocked,
+      error: acc.error + r.error,
     }),
-    { spend: user.canViewSpend ? 0 : null, callsSent: 0, smsSent: 0, mmsSent: 0, delivered: 0, failed: 0 } as {
+    {
+      spend: user.canViewSpend ? 0 : null,
+      callsSent: 0,
+      smsSent: 0,
+      mmsSent: 0,
+      received: 0,
+      delivered: 0,
+      blocked: 0,
+      error: 0,
+    } as {
       spend: number | null;
       callsSent: number;
       smsSent: number;
       mmsSent: number;
+      received: number;
       delivered: number;
-      failed: number;
+      blocked: number;
+      error: number;
     }
   );
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
+      {/* Keeps numbers current without a manual click — re-requests this page
+          every 20s client-side. Not Twilio push; see note by the selector. */}
+      <AutoRefresh intervalSeconds={20} />
+
       <div className="mb-8 flex items-center justify-between">
         <div>
           <BrandKicker />
@@ -86,7 +104,7 @@ export default async function DeliveryReportPage({ searchParams }: PageProps<"/a
       {/* Table 1: Delivery Report */}
       <section className="mb-10">
         <h2 className="mb-3 text-lg font-semibold text-neutral-900">Delivery report</h2>
-        <div className="overflow-hidden rounded-xl border border-neutral-200">
+        <div className="overflow-x-auto rounded-xl border border-neutral-200">
           <table className="w-full text-sm">
             <thead className="bg-neutral-50 text-left text-neutral-500">
               <tr>
@@ -95,8 +113,10 @@ export default async function DeliveryReportPage({ searchParams }: PageProps<"/a
                 <Th>Calls sent</Th>
                 <Th>SMS sent</Th>
                 <Th>MMS sent</Th>
+                <Th>Received</Th>
                 <Th>Delivered</Th>
-                <Th>Failed</Th>
+                <Th>Blocked</Th>
+                <Th>Error</Th>
               </tr>
             </thead>
             <tbody>
@@ -107,13 +127,15 @@ export default async function DeliveryReportPage({ searchParams }: PageProps<"/a
                   <td className="px-4 py-3">{r.callsSent}</td>
                   <td className="px-4 py-3">{r.smsSent}</td>
                   <td className="px-4 py-3">{r.mmsSent}</td>
+                  <td className="px-4 py-3">{r.received}</td>
                   <td className="px-4 py-3 text-emerald-700">{r.delivered}</td>
-                  <td className="px-4 py-3 text-red-700">{r.failed}</td>
+                  <td className="px-4 py-3 text-amber-700">{r.blocked}</td>
+                  <td className="px-4 py-3 text-red-700">{r.error}</td>
                 </tr>
               ))}
               {summary.length === 0 && (
                 <tr>
-                  <td colSpan={user.canViewSpend ? 7 : 6} className="px-4 py-10 text-center text-neutral-400">
+                  <td colSpan={user.canViewSpend ? 9 : 8} className="px-4 py-10 text-center text-neutral-400">
                     No accessible sub-accounts.
                   </td>
                 </tr>
@@ -127,8 +149,10 @@ export default async function DeliveryReportPage({ searchParams }: PageProps<"/a
                   <td className="px-4 py-3">{totals.callsSent}</td>
                   <td className="px-4 py-3">{totals.smsSent}</td>
                   <td className="px-4 py-3">{totals.mmsSent}</td>
+                  <td className="px-4 py-3">{totals.received}</td>
                   <td className="px-4 py-3 text-emerald-700">{totals.delivered}</td>
-                  <td className="px-4 py-3 text-red-700">{totals.failed}</td>
+                  <td className="px-4 py-3 text-amber-700">{totals.blocked}</td>
+                  <td className="px-4 py-3 text-red-700">{totals.error}</td>
                 </tr>
               </tfoot>
             )}
@@ -136,13 +160,14 @@ export default async function DeliveryReportPage({ searchParams }: PageProps<"/a
         </div>
       </section>
 
-      {/* Table 2: Deliveries & Failures (reason codes) */}
+      {/* Table 2: Blocked & Error reasons */}
       <section className="mb-10">
-        <h2 className="mb-3 text-lg font-semibold text-neutral-900">Deliveries &amp; failures</h2>
+        <h2 className="mb-3 text-lg font-semibold text-neutral-900">Blocked &amp; error reasons</h2>
         <p className="mb-3 text-sm text-neutral-500">
-          Grouped by sub-account, channel, and reason — not a per-message log.
+          Grouped by sub-account, channel, and reason — not a per-message log. Blocked = Twilio accepted it, then the
+          carrier/handset rejected it. Error = it never reached the carrier (bad number, account issue, etc).
         </p>
-        <div className="overflow-hidden rounded-xl border border-neutral-200">
+        <div className="overflow-x-auto rounded-xl border border-neutral-200">
           <table className="w-full text-sm">
             <thead className="bg-neutral-50 text-left text-neutral-500">
               <tr>
@@ -160,7 +185,7 @@ export default async function DeliveryReportPage({ searchParams }: PageProps<"/a
                   <td className="px-4 py-3 font-medium text-neutral-900">{f.businessName}</td>
                   <td className="px-4 py-3">{f.channel}</td>
                   <td className="px-4 py-3">
-                    <span className={f.status === "FAILED" ? "text-red-700" : "text-amber-700"}>{f.status}</span>
+                    <span className={f.statusLabel === "Error" ? "text-red-700" : "text-amber-700"}>{f.statusLabel}</span>
                   </td>
                   <td className="px-4 py-3 text-neutral-500">{f.errorCode ?? "—"}</td>
                   <td className="px-4 py-3">{f.reasonLabel}</td>
@@ -170,7 +195,7 @@ export default async function DeliveryReportPage({ searchParams }: PageProps<"/a
               {failures.length === 0 && (
                 <tr>
                   <td colSpan={6} className="px-4 py-10 text-center text-neutral-400">
-                    No failures or undelivered messages in this range.
+                    Nothing blocked or errored in this range.
                   </td>
                 </tr>
               )}
@@ -179,9 +204,12 @@ export default async function DeliveryReportPage({ searchParams }: PageProps<"/a
         </div>
       </section>
 
-      {/* Individual account selector + pie chart */}
+      {/* Individual account selector + real-time-ish stats */}
       <section>
-        <h2 className="mb-3 text-lg font-semibold text-neutral-900">Sub-account detail</h2>
+        <div className="mb-3 flex items-baseline justify-between">
+          <h2 className="text-lg font-semibold text-neutral-900">Sub-account detail</h2>
+          <p className="text-xs text-neutral-400">Auto-refreshes every 20s · or hit Sync now for this instant</p>
+        </div>
         <div className="mb-4">
           <AccountSelector accounts={accounts} selectedId={selectedAccountId} />
         </div>
@@ -195,22 +223,31 @@ export default async function DeliveryReportPage({ searchParams }: PageProps<"/a
                 </button>
               </form>
             </div>
-            <div className="mb-6 flex gap-8 text-sm">
+            <div className="mb-6 grid grid-cols-2 gap-6 text-sm sm:grid-cols-4">
               <div>
-                <p className="text-neutral-500">Delivered</p>
-                <p className="text-xl font-semibold text-emerald-700">{accountMetrics.delivered}</p>
+                <p className="text-neutral-500">Sent</p>
+                <p className="text-xl font-semibold text-neutral-900">{accountMetrics.sent}</p>
               </div>
               <div>
-                <p className="text-neutral-500">Failed</p>
-                <p className="text-xl font-semibold text-red-700">{accountMetrics.failed}</p>
+                <p className="text-neutral-500">Received</p>
+                <p className="text-xl font-semibold text-neutral-900">{accountMetrics.received}</p>
+              </div>
+              <div>
+                <p className="text-neutral-500">Blocked</p>
+                <p className="text-xl font-semibold text-amber-700">{accountMetrics.blocked}</p>
+              </div>
+              <div>
+                <p className="text-neutral-500">Error</p>
+                <p className="text-xl font-semibold text-red-700">{accountMetrics.error}</p>
               </div>
             </div>
+            <p className="mb-3 text-xs font-medium uppercase tracking-wide text-neutral-400">Outcome of sent messages/calls</p>
             <DonutChart
               slices={[
-                { key: "delivered", label: "Delivered", value: accountMetrics.breakdown.delivered, colorClass: "stroke-emerald-500" },
-                { key: "undelivered", label: "Undelivered", value: accountMetrics.breakdown.undelivered, colorClass: "stroke-amber-500" },
-                { key: "failed", label: "Failed", value: accountMetrics.breakdown.failed, colorClass: "stroke-red-500" },
-                { key: "unknown", label: "Unknown / pending", value: accountMetrics.breakdown.unknown, colorClass: "stroke-neutral-300" },
+                { key: "delivered", label: "Delivered", value: accountMetrics.delivered, colorClass: "stroke-emerald-500" },
+                { key: "blocked", label: "Blocked", value: accountMetrics.blocked, colorClass: "stroke-amber-500" },
+                { key: "error", label: "Error", value: accountMetrics.error, colorClass: "stroke-red-500" },
+                { key: "pending", label: "Pending", value: accountMetrics.pending, colorClass: "stroke-neutral-300" },
               ]}
             />
           </div>
@@ -221,5 +258,5 @@ export default async function DeliveryReportPage({ searchParams }: PageProps<"/a
 }
 
 function Th({ children }: { children?: React.ReactNode }) {
-  return <th className="px-4 py-2 font-medium">{children}</th>;
+  return <th className="px-4 py-2 font-medium whitespace-nowrap">{children}</th>;
 }
