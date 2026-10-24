@@ -2,11 +2,10 @@
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useState } from "react";
+import { RANGE_DAY_OPTIONS } from "@/lib/delivery/range";
 
 const OPTIONS: { value: string; label: string }[] = [
-  { value: "day", label: "Day" },
-  { value: "week", label: "Week" },
-  { value: "month", label: "Month" },
+  ...RANGE_DAY_OPTIONS.map((days) => ({ value: `${days}`, label: `${days}` })),
   { value: "custom", label: "Custom" },
 ];
 

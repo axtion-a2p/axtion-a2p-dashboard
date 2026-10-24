@@ -1,11 +1,14 @@
-export type RangeKind = "day" | "week" | "month" | "custom";
+export const RANGE_DAY_OPTIONS = [1, 3, 7, 14, 30] as const;
+export type RangeDays = (typeof RANGE_DAY_OPTIONS)[number];
+
+export type RangeKind = `${RangeDays}` | "custom";
 
 export type ResolvedRange = { kind: RangeKind; from: Date; to: Date; label: string };
 
 /**
  * Rolling windows (not calendar day/week/month) — simplest to reason about and
  * matches how Twilio's own console usage filters behave. All in UTC; a
- * timezone-aware "day" filter would need the viewer's offset, not added here.
+ * timezone-aware filter would need the viewer's offset, not added here.
  */
 export function resolveRange(kind: string | undefined, fromParam?: string, toParam?: string): ResolvedRange {
   const now = new Date();
@@ -18,15 +21,13 @@ export function resolveRange(kind: string | undefined, fromParam?: string, toPar
     return { kind: "custom", from, to, label: `${fromParam} – ${toParam}` };
   }
 
-  if (kind === "week") {
-    return { kind: "week", from: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000), to: now, label: "Last 7 days" };
-  }
+  const parsed = Number(kind);
+  const days: RangeDays = (RANGE_DAY_OPTIONS as readonly number[]).includes(parsed) ? (parsed as RangeDays) : 7;
 
-  if (kind === "month") {
-    return { kind: "month", from: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000), to: now, label: "Last 30 days" };
-  }
-
-  const startOfDay = new Date(now);
-  startOfDay.setUTCHours(0, 0, 0, 0);
-  return { kind: "day", from: startOfDay, to: now, label: "Today" };
+  return {
+    kind: `${days}`,
+    from: new Date(now.getTime() - days * 24 * 60 * 60 * 1000),
+    to: now,
+    label: days === 1 ? "Last 24 hours" : `Last ${days} days`,
+  };
 }

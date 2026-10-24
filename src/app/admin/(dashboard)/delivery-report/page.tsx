@@ -12,7 +12,7 @@ import { syncNow } from "./actions";
 
 export default async function DeliveryReportPage({ searchParams }: PageProps<"/admin/delivery-report">) {
   const sp = await searchParams;
-  const rangeKind = typeof sp.range === "string" ? sp.range : "day";
+  const rangeKind = typeof sp.range === "string" ? sp.range : "7";
   const fromParam = typeof sp.from === "string" ? sp.from : undefined;
   const toParam = typeof sp.to === "string" ? sp.to : undefined;
   const selectedAccountId = typeof sp.account === "string" ? sp.account : undefined;
