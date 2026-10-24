@@ -13,12 +13,18 @@ export type ResolvedRange = { kind: RangeKind; from: Date; to: Date; label: stri
 export function resolveRange(kind: string | undefined, fromParam?: string, toParam?: string): ResolvedRange {
   const now = new Date();
 
-  if (kind === "custom" && fromParam && toParam) {
-    const from = new Date(fromParam);
-    const to = new Date(toParam);
-    // Make the "to" date inclusive of its whole day when it's a bare yyyy-mm-dd.
-    if (toParam.length === 10) to.setUTCHours(23, 59, 59, 999);
-    return { kind: "custom", from, to, label: `${fromParam} – ${toParam}` };
+  if (kind === "custom") {
+    if (fromParam && toParam) {
+      const from = new Date(fromParam);
+      const to = new Date(toParam);
+      // Make the "to" date inclusive of its whole day when it's a bare yyyy-mm-dd.
+      if (toParam.length === 10) to.setUTCHours(23, 59, 59, 999);
+      return { kind: "custom", from, to, label: `${fromParam} – ${toParam}` };
+    }
+    // Dates not picked yet — keep kind "custom" so the picker shows the date
+    // inputs instead of silently reverting to a day-count button, with a
+    // sensible placeholder window until the viewer applies real dates.
+    return { kind: "custom", from: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000), to: now, label: "Last 7 days" };
   }
 
   const parsed = Number(kind);
