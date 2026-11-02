@@ -14,6 +14,7 @@ import type {
   BrandStatus,
   CampaignInput,
   CampaignStatus,
+  InboundRoutingAuditResult,
   ProviderAdapter,
   ProviderPhoneNumber,
 } from "./types";
@@ -370,5 +371,44 @@ export class TenDlcProvider implements ProviderAdapter {
     await this.client.request("POST", `${this.config.messagingBase}/v1/Services/${messagingServiceSid}/PhoneNumbers`, {
       PhoneNumberSid: phoneNumberSid,
     });
+  }
+
+  async auditInboundRouting(): Promise<InboundRoutingAuditResult[]> {
+    const services = await this.client.request<{
+      services: { sid: string; friendly_name: string; use_inbound_webhook_on_number: boolean; inbound_request_url: string | null }[];
+    }>("GET", `${this.config.messagingBase}/v1/Services?PageSize=50`);
+
+    const results: InboundRoutingAuditResult[] = [];
+    for (const s of services.services) {
+      const numbers = await this.client.request<{ phone_numbers: unknown[] }>(
+        "GET",
+        `${this.config.messagingBase}/v1/Services/${s.sid}/PhoneNumbers`
+      );
+      const numbersAttached = numbers.phone_numbers.length;
+      if (numbersAttached === 0) continue; // nothing can be silently dropped with no numbers on it
+
+      const broken = s.use_inbound_webhook_on_number === false && !s.inbound_request_url;
+      if (!broken) {
+        results.push({ serviceSid: s.sid, serviceName: s.friendly_name, numbersAttached, wasHealthy: true, fixed: false });
+        continue;
+      }
+
+      try {
+        await this.client.request("POST", `${this.config.messagingBase}/v1/Services/${s.sid}`, {
+          UseInboundWebhookOnNumber: "true",
+        });
+        results.push({ serviceSid: s.sid, serviceName: s.friendly_name, numbersAttached, wasHealthy: false, fixed: true });
+      } catch (err) {
+        results.push({
+          serviceSid: s.sid,
+          serviceName: s.friendly_name,
+          numbersAttached,
+          wasHealthy: false,
+          fixed: false,
+          error: err instanceof Error ? err.message : "Unknown error",
+        });
+      }
+    }
+    return results;
   }
 }

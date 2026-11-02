@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { getProvider } from "@/lib/providers";
 import type { BrandInput, CampaignInput } from "@/lib/providers/types";
 import { healthForStatus } from "@/lib/campaignHealth";
+import { auditAndLogInboundRouting } from "@/lib/inboundRoutingCheck";
 
 const brandSchema = z.object({
   provider: z.enum(["TWILIO", "TEXTGRID"]),
@@ -452,6 +453,7 @@ export async function purchaseAndAssignNumber(token: string, formData: FormData)
           actor: "client",
         },
       });
+      await auditAndLogInboundRouting(provider, subAccount.id, "client");
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : "Purchase failed";

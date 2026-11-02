@@ -10,6 +10,7 @@ import type { CampaignInput } from "@/lib/providers/types";
 import { generateUniqueSubdomain } from "@/lib/generateSubdomain";
 import { subdomainUrl } from "@/lib/subdomain";
 import { healthForStatus } from "@/lib/campaignHealth";
+import { auditAndLogInboundRouting } from "@/lib/inboundRoutingCheck";
 
 export async function logout() {
   await destroyAdminSession();
@@ -67,6 +68,15 @@ export async function syncSubAccount(subAccountId: string) {
     }
   }
 
+  // Catches the bug that silently dropped inbound SMS for three real clients
+  // this session: a Messaging Service with numbers attached but inbound
+  // routing disabled at the service level, overriding an otherwise-correct
+  // per-number webhook. Runs once per provider actually used, not per campaign.
+  const providersUsed = new Set(subAccount.campaigns.map((c) => c.provider));
+  for (const providerName of providersUsed) {
+    await auditAndLogInboundRouting(providerFor(providerName), subAccountId, "admin");
+  }
+
   revalidatePath(`/admin/${subAccountId}`);
   revalidatePath("/admin");
 }
@@ -119,6 +129,7 @@ export async function assignNumberToCampaign(subAccountId: string, formData: For
       data: { campaignId, status: "ASSIGNED", assignedAt: new Date() },
     });
     await logEvent(subAccountId, "PHONE_NUMBER", `${phoneNumber.e164} assigned to campaign "${campaign.useCase}".`, phoneNumberId);
+    await auditAndLogInboundRouting(provider, subAccountId, "admin");
   } catch (err) {
     await db.phoneNumber.update({ where: { id: phoneNumberId }, data: { status: "FAILED" } });
     await logEvent(subAccountId, "PHONE_NUMBER", `Failed to assign ${phoneNumber.e164}: ${errMessage(err)}`, phoneNumberId);
@@ -163,6 +174,7 @@ export async function purchaseAndAssignNumber(subAccountId: string, formData: Fo
         data: { campaignId, status: "ASSIGNED", assignedAt: new Date() },
       });
       await logEvent(subAccountId, "PHONE_NUMBER", `${purchased.e164} assigned to campaign "${campaign.useCase}".`, phoneNumber.id);
+      await auditAndLogInboundRouting(provider, subAccountId, "admin");
     }
   } catch (err) {
     await logEvent(subAccountId, "PHONE_NUMBER", `Purchase failed: ${errMessage(err)}`);

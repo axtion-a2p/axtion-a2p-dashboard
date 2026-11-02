@@ -35,6 +35,7 @@ import type {
   BrandStatus,
   CampaignInput,
   CampaignStatus,
+  InboundRoutingAuditResult,
   ProviderAdapter,
   ProviderPhoneNumber,
 } from "./types";
@@ -265,5 +266,10 @@ export class TextGridProvider implements ProviderAdapter {
     await this.client.request("POST", this.url(`/campaigns/number/${messagingServiceSid}`), {
       phoneNumberSids: [phoneNumberSid],
     });
+  }
+
+  /** TextGrid has no Messaging Service inbound-routing flag to misconfigure — nothing to audit. */
+  async auditInboundRouting(): Promise<InboundRoutingAuditResult[]> {
+    return [];
   }
 }

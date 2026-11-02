@@ -108,4 +108,24 @@ export interface ProviderAdapter {
   searchAvailableNumbers(areaCode: string): Promise<AvailableNumber[]>;
   purchaseNumber(e164: string): Promise<ProviderPhoneNumber>;
   assignNumberToMessagingService(messagingServiceSid: string, phoneNumberSid: string): Promise<void>;
+
+  /**
+   * Catches the exact bug that silently dropped inbound SMS for Dean Capital,
+   * Building Hope, and Park Place Consulting: a Messaging Service with numbers
+   * attached but use_inbound_webhook_on_number=false and no inbound_request_url
+   * — Twilio's own documented behavior for that combination is "receiving
+   * inbound messages is disabled." Auto-fixes by enabling the flag, which is
+   * safe because every number's own webhook was already correct in every case
+   * found. No-op for providers without this failure mode.
+   */
+  auditInboundRouting(): Promise<InboundRoutingAuditResult[]>;
 }
+
+export type InboundRoutingAuditResult = {
+  serviceSid: string;
+  serviceName: string;
+  numbersAttached: number;
+  wasHealthy: boolean;
+  fixed: boolean;
+  error?: string;
+};
