@@ -47,13 +47,13 @@ export type TextGridProviderConfig = {
   apiBase: string;
 };
 
-type TextGridBrand = {
+export type TextGridBrand = {
   brandId: string;
   identityStatus: "PENDING" | "SELF_DECLARED" | "VERIFIED" | "UNVERIFIED" | "UNVERIFED" | string;
   [key: string]: unknown;
 };
 
-type TextGridCampaign = {
+export type TextGridCampaign = {
   campaignId: string;
   status: string;
   campaignEnabled?: boolean;
@@ -279,6 +279,50 @@ export class TextGridProvider implements ProviderAdapter {
     await this.client.request("POST", this.url(`/campaigns/number/${messagingServiceSid}`), {
       phoneNumberSids: [phoneNumberSid],
     });
+  }
+
+  // ---- TextGrid-only operations (no Twilio equivalent) --------------------
+  // These back the dedicated TextGrid flow; they are intentionally not on
+  // ProviderAdapter. Endpoints are from TextGrid's 10DLC API doc.
+
+  listBrands(): Promise<TextGridBrand[]> {
+    return this.client.request<TextGridBrand[]>("GET", this.url("/campaigns/brand"));
+  }
+
+  getBrand(brandId: string): Promise<TextGridBrand> {
+    return this.client.request<TextGridBrand>("GET", this.url(`/campaigns/brand/${brandId}`));
+  }
+
+  /** Campaign Builder step one: restrictions, pricing and MNO attributes for this brand + use case. Throws when the brand doesn't qualify. */
+  getUseCaseEligibility(brandId: string, useCase: string) {
+    return this.client.request<Record<string, unknown>>("GET", this.url(`/campaigns/brand/${brandId}/usecase/${useCase}`));
+  }
+
+  listCampaignsByBrand(brandId: string): Promise<TextGridCampaign[]> {
+    return this.client.request<TextGridCampaign[]>("GET", this.url(`/campaigns/brand/${brandId}/campaign`));
+  }
+
+  listCampaigns(): Promise<TextGridCampaign[]> {
+    return this.client.request<TextGridCampaign[]>("GET", this.url("/campaigns/campaign"));
+  }
+
+  /** Brand edits are a PUT to the collection with brandId in the body. `revet` asks TCR for a new score. */
+  editBrand(brandId: string, fields: Record<string, unknown>, revet = false): Promise<TextGridBrand> {
+    return this.client.request<TextGridBrand>("PUT", this.url("/campaigns/brand"), { brandId, ...fields, ...(revet ? { revet: true } : {}) });
+  }
+
+  /** Sole Proprietor brands must pass SMS OTP before they can register campaigns. */
+  triggerSmsOtp(brandId: string, pinSms: string, successSms: string) {
+    return this.client.request("POST", this.url(`/campaigns/brand/${brandId}/smsOtp`), { pinSms, successSms });
+  }
+
+  verifySmsOtp(brandId: string, otpPin: string) {
+    return this.client.request("PUT", this.url(`/campaigns/brand/${brandId}/smsOtp`), { otpPin });
+  }
+
+  /** Connects a campaign that was shared to TextGrid through TCR to this account; required before numbers can be attached to it. */
+  importCampaign(campaignId: string, accountSid: string) {
+    return this.client.request("GET", this.url(`/campaigns/${campaignId}/import/${accountSid}`));
   }
 
   /** TextGrid has no Messaging Service inbound-routing flag to misconfigure — nothing to audit. */
