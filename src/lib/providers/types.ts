@@ -68,6 +68,12 @@ export type CampaignInput = {
   optoutKeywords?: string;
   referenceId?: string;
   autoRenewal?: boolean;
+  // Campaign flags from TextGrid's create/edit body. Sent only when set, so an
+  // edit that doesn't mention them never flips a value already on file.
+  directLending?: boolean;
+  ageGated?: boolean;
+  affiliateMarketing?: boolean;
+  numberPool?: boolean;
 };
 
 export type CampaignStatus = {
@@ -103,6 +109,12 @@ export interface ProviderAdapter {
   submitCampaign(brandId: string, input: CampaignInput): Promise<CampaignStatus>;
   getCampaignStatus(messagingServiceSid: string, providerCampaignId: string): Promise<CampaignStatus>;
   updateCampaign(providerCampaignId: string, input: CampaignInput): Promise<CampaignStatus>;
+  /**
+   * Edits a declined campaign and sends it back for review in one call.
+   * Only providers with a dedicated resubmit endpoint implement this
+   * (TextGrid); callers fall back to updateCampaign otherwise.
+   */
+  resubmitCampaign?(providerCampaignId: string, input: CampaignInput): Promise<CampaignStatus>;
 
   listPhoneNumbers(): Promise<ProviderPhoneNumber[]>;
   searchAvailableNumbers(areaCode: string): Promise<AvailableNumber[]>;

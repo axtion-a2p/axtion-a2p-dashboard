@@ -306,7 +306,11 @@ export async function editCampaign(token: string, campaignId: string, formData: 
       helpMessage: d.helpMessage,
     };
 
-    const status = await provider.updateCampaign(campaign.providerCampaignId, input);
+    // A declined campaign goes back for review through the provider's own resubmit call when it has one.
+    const status =
+      campaign.stage === "REJECTED" && provider.resubmitCampaign
+        ? await provider.resubmitCampaign(campaign.providerCampaignId, input)
+        : await provider.updateCampaign(campaign.providerCampaignId, input);
 
     await db.campaign.update({
       where: { id: campaignId },

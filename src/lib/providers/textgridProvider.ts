@@ -57,6 +57,8 @@ type TextGridCampaign = {
   campaignId: string;
   status: string;
   campaignEnabled?: boolean;
+  SecondaryDcaSharingStatus?: "PENDING" | "ACCEPTED" | "DECLINED" | string;
+  SecondaryDcaDeclineReason?: string;
   [key: string]: unknown;
 };
 
@@ -175,6 +177,10 @@ export class TextGridProvider implements ProviderAdapter {
       optoutMessage: input.optoutMessage,
       referenceId: input.referenceId,
       autoRenewal: input.autoRenewal ?? true,
+      directLending: input.directLending,
+      ageGated: input.ageGated,
+      affiliateMarketing: input.affiliateMarketing,
+      numberPool: input.numberPool,
     });
 
     return this.mapCampaignStatus(campaign);
@@ -191,45 +197,52 @@ export class TextGridProvider implements ProviderAdapter {
 
   /** Edits an already-submitted campaign in place (e.g. filling in previously-missing sample messages) rather than creating a new one. Same field set as submitCampaign, PUT to the existing campaign's resource. */
   async updateCampaign(providerCampaignId: string, input: CampaignInput): Promise<CampaignStatus> {
+    return this.putCampaign(this.url(`/campaigns/campaign/${providerCampaignId}`), input);
+  }
+
+  /** Same edit, plus `/resubmit` — sends a declined campaign back to DCA for reassessment. */
+  async resubmitCampaign(providerCampaignId: string, input: CampaignInput): Promise<CampaignStatus> {
+    return this.putCampaign(this.url(`/campaigns/campaign/${providerCampaignId}/resubmit`), input);
+  }
+
+  private async putCampaign(url: string, input: CampaignInput): Promise<CampaignStatus> {
     const samples = input.sampleMessages.slice(0, 5);
-    const campaign = await this.client.request<TextGridCampaign>(
-      "PUT",
-      this.url(`/campaigns/campaign/${providerCampaignId}`),
-      {
-        usecase: input.useCase,
-        subUsecases: input.subUsecases,
-        description: input.description,
-        embeddedLink: input.hasEmbeddedLinks,
-        embeddedPhone: input.hasEmbeddedPhone,
-        subscriberOptin: true,
-        subscriberOptout: true,
-        subscriberHelp: true,
-        sample1: samples[0],
-        sample2: samples[1],
-        sample3: samples[2],
-        sample4: samples[3],
-        sample5: samples[4],
-        messageFlow: input.optInDetails,
-        termsAndConditionsLink: input.termsAndConditionsLink,
-        privacyPolicyLink: input.privacyPolicyLink,
-        helpKeywords: input.helpKeywords ?? "HELP",
-        helpMessage: input.helpMessage,
-        optinKeywords: input.optinKeywords ?? "START",
-        optinMessage: input.optinMessage,
-        optoutKeywords: input.optoutKeywords ?? "STOP",
-        optoutMessage: input.optoutMessage,
-        referenceId: input.referenceId,
-        autoRenewal: input.autoRenewal ?? true,
-      }
-    );
+    const campaign = await this.client.request<TextGridCampaign>("PUT", url, {
+      description: input.description,
+      embeddedLink: input.hasEmbeddedLinks,
+      embeddedPhone: input.hasEmbeddedPhone,
+      sample1: samples[0],
+      sample2: samples[1],
+      sample3: samples[2],
+      sample4: samples[3],
+      sample5: samples[4],
+      messageFlow: input.optInDetails,
+      termsAndConditionsLink: input.termsAndConditionsLink,
+      privacyPolicyLink: input.privacyPolicyLink,
+      helpKeywords: input.helpKeywords ?? "HELP",
+      helpMessage: input.helpMessage,
+      optinKeywords: input.optinKeywords ?? "START",
+      optinMessage: input.optinMessage,
+      optoutKeywords: input.optoutKeywords ?? "STOP",
+      optoutMessage: input.optoutMessage,
+      autoRenewal: input.autoRenewal ?? true,
+      directLending: input.directLending,
+      ageGated: input.ageGated,
+      affiliateMarketing: input.affiliateMarketing,
+      numberPool: input.numberPool,
+    });
     return this.mapCampaignStatus(campaign);
   }
 
   private mapCampaignStatus(campaign: TextGridCampaign): CampaignStatus {
-    const stage = campaign.status === "ACTIVE" ? "APPROVED" : "PENDING_REVIEW";
+    // SecondaryDcaSharingStatus (PENDING/ACCEPTED/DECLINED) is the actual review
+    // outcome; `status` stays ACTIVE even for a declined campaign.
+    const declined = campaign.SecondaryDcaSharingStatus === "DECLINED";
+    const stage = declined ? "REJECTED" : campaign.status === "ACTIVE" ? "APPROVED" : "PENDING_REVIEW";
     return {
       providerCampaignId: campaign.campaignId,
       stage,
+      failureReason: declined ? (campaign.SecondaryDcaDeclineReason ?? "Declined by carrier review") : undefined,
       enabled: campaign.campaignEnabled !== false,
       raw: campaign,
     };
