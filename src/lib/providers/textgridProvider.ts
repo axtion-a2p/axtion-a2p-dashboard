@@ -285,6 +285,16 @@ export class TextGridProvider implements ProviderAdapter {
   // These back the dedicated TextGrid flow; they are intentionally not on
   // ProviderAdapter. Endpoints are from TextGrid's 10DLC API doc.
 
+  /** Creates a sub-account under the account these credentials belong to. Returns the new account's own SID/token. */
+  createSubAccount(friendlyName: string) {
+    return this.client.request<{ sid: string; auth_token: string; friendly_name: string; status: string; webhook_secret?: string }>(
+      "POST",
+      this.url("/Accounts.json"),
+      { friendlyName },
+      "form"
+    );
+  }
+
   listBrands(): Promise<TextGridBrand[]> {
     return this.client.request<TextGridBrand[]>("GET", this.url("/campaigns/brand"));
   }

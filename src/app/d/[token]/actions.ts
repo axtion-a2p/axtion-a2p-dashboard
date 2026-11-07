@@ -4,6 +4,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { getProvider } from "@/lib/providers";
+import { ensureTextGridAccount } from "@/lib/textgridAccount";
 import type { BrandInput, CampaignInput } from "@/lib/providers/types";
 import { healthForStatus } from "@/lib/campaignHealth";
 import { auditAndLogInboundRouting } from "@/lib/inboundRoutingCheck";
@@ -70,7 +71,9 @@ export async function submitBrand(token: string, _prev: FormState, formData: For
   };
 
   try {
-    const provider = getProvider(d.provider, subAccount.providerAccountSid, subAccount.providerAuthToken);
+    // TextGrid clients get their own TextGrid sub-account so the brand and campaign aren't registered on the master account.
+    const account = d.provider === "TEXTGRID" ? await ensureTextGridAccount(subAccount.id) : subAccount;
+    const provider = getProvider(d.provider, account.providerAccountSid, account.providerAuthToken);
     const status = await provider.submitBrand(input);
 
     await db.brand.upsert({

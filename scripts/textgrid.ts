@@ -10,6 +10,8 @@
  * Read-only:
  *   brands | brand <brandId> | campaigns [brandId] | eligibility <brandId> <USE_CASE>
  * Writes (print the payload and stop unless --yes is passed):
+ *   account:create <business name>       new sub-account under these (master) credentials;
+ *                                        prints its SID/token — use those for the commands below
  *   brand:create <brand.json>            BrandInput
  *   campaign:create <brandId> <c.json>   CampaignInput; needs an approved brand, a
  *                                        passing use-case check, and no existing campaign
@@ -69,6 +71,14 @@ async function main() {
     case "eligibility":
       show(await tg.getUseCaseEligibility(rest[0], rest[1]));
       break;
+
+    case "account:create": {
+      const name = rest.join(" ");
+      if (!name) throw new Error("Give the business name for the new sub-account.");
+      if (dryRun(`create TextGrid sub-account "${name}"`, { friendlyName: name })) break;
+      show(await tg.createSubAccount(name));
+      break;
+    }
 
     case "brand:create": {
       const input = readJson<BrandInput>(rest[0]);

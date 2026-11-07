@@ -7,6 +7,7 @@ import { generateUniqueSubdomain } from "@/lib/generateSubdomain";
 import { subdomainUrl } from "@/lib/subdomain";
 import { standardOptInOutHelp } from "@/lib/campaignTemplate";
 import { getProvider } from "@/lib/providers";
+import { ensureTextGridAccount } from "@/lib/textgridAccount";
 import type { BrandInput } from "@/lib/providers/types";
 
 // One comprehensive, client-facing form replaces the old external GHL intake
@@ -114,7 +115,9 @@ export async function submitIntake(_prev: IntakeState, formData: FormData): Prom
   };
 
   try {
-    const provider = getProvider(d.provider);
+    // TextGrid clients get their own TextGrid sub-account so the brand and campaign aren't registered on the master account.
+    const account = d.provider === "TEXTGRID" ? await ensureTextGridAccount(subAccount.id) : null;
+    const provider = getProvider(d.provider, account?.providerAccountSid, account?.providerAuthToken);
     const status = await provider.submitBrand(brandInput);
     await db.brand.create({
       data: {
