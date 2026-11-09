@@ -92,8 +92,9 @@ export function OptInForm({
       </label>
 
       <div className="space-y-3">
-        <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-          Optional — text message updates
+        <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Text message consent</p>
+        <p className="text-xs text-slate-500">
+          Checking the box below is your choice. You can sign up without agreeing to receive text messages.
         </p>
         {categories.map((category) => (
           <label key={category} className="flex items-start gap-2.5 text-sm text-slate-600">
