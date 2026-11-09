@@ -1,11 +1,16 @@
 import { requireSiteSubAccount } from "../data";
 import { OptInForm } from "./OptInForm";
-import { optInCategoriesForUseCases } from "@/lib/optInCategories";
+import { optInCategoriesFor } from "@/lib/optInCategories";
 
-export default async function OptInPage({ params }: PageProps<"/site/[subdomain]/optin">) {
+export default async function OptInPage({ params, searchParams }: PageProps<"/site/[subdomain]/optin">) {
   const { subdomain } = await params;
+  const { program } = await searchParams;
+  const programValue = typeof program === "string" ? program : undefined;
   const subAccount = await requireSiteSubAccount(subdomain);
-  const categories = optInCategoriesForUseCases(subAccount.campaigns.map((c) => c.useCase));
+  const categories = optInCategoriesFor(
+    subAccount.campaigns.map((c) => c.useCase),
+    programValue,
+  );
 
   return (
     <div className="mx-auto max-w-2xl rounded-2xl border border-slate-200 bg-white p-8 shadow-sm sm:p-10">
@@ -14,7 +19,7 @@ export default async function OptInPage({ params }: PageProps<"/site/[subdomain]
         Choose which updates you&apos;d like from {subAccount.businessName} by text. You can opt out at any time.
       </p>
       <div className="mt-8">
-        <OptInForm subdomain={subdomain} businessName={subAccount.businessName} categories={categories} />
+        <OptInForm subdomain={subdomain} businessName={subAccount.businessName} categories={categories} program={programValue} />
       </div>
     </div>
   );

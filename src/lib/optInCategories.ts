@@ -33,6 +33,19 @@ export function optInCategoriesForUseCases(useCases: string[]): OptInCategory[] 
   return OPT_IN_CATEGORY_ORDER.filter((c) => set.has(c));
 }
 
+/**
+ * Which consent boxes to show. A campaign registered outside the dashboard (or not
+ * yet recorded in it) won't show up in `useCases`, so a registration can point at
+ * `/optin?program=marketing` to get that program's consent box on its own — the
+ * page a carrier reviewer lands on then matches the message flow they were given.
+ * An unrecognised `program` is ignored.
+ */
+export function optInCategoriesFor(useCases: string[], program?: string | null): OptInCategory[] {
+  const requested = program?.toUpperCase();
+  const match = OPT_IN_CATEGORY_ORDER.find((c) => c === requested);
+  return match ? [match] : optInCategoriesForUseCases(useCases);
+}
+
 /** The "I agree to..." consent sentence for a category, up to "...HELP for help." — callers append a Privacy/Terms reference. */
 export function optInStatement(category: OptInCategory, businessName: string): string {
   const subject =
@@ -41,7 +54,7 @@ export function optInStatement(category: OptInCategory, businessName: string): s
       : category === "MARKETING"
         ? "marketing and promotional messages"
         : "account notifications and service-related messages";
-  return `I agree to receive ${subject} via SMS from ${businessName}. Message frequency varies. Message and data rates may apply. Reply STOP to opt out, HELP for help.`;
+  return `I agree to receive ${subject} via SMS from ${businessName}. Message frequency varies. Message and data rates may apply. Consent is not a condition of purchase. Reply STOP to opt out, HELP for help.`;
 }
 
 /** Full plain-text disclosure (statement + Privacy/Terms reference) for snapshotting into a consent record. */

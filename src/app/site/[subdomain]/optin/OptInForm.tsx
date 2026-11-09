@@ -11,12 +11,14 @@ export function OptInForm({
   subdomain,
   businessName,
   categories,
+  program,
 }: {
   subdomain: string;
   businessName: string;
   categories: OptInCategory[];
+  program?: string;
 }) {
-  const action = submitOptIn.bind(null, subdomain);
+  const action = submitOptIn.bind(null, subdomain, program);
   const [state, formAction, pending] = useActionState(action, initialState);
 
   if (state.ok) {

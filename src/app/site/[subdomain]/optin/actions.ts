@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireSiteSubAccount } from "../data";
-import { optInCategoriesForUseCases, optInDisclosureText, OPT_IN_CATEGORY_FIELD_NAME } from "@/lib/optInCategories";
+import { optInCategoriesFor, optInDisclosureText, OPT_IN_CATEGORY_FIELD_NAME } from "@/lib/optInCategories";
 
 const schema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -13,7 +13,12 @@ const schema = z.object({
 
 export type OptInState = { error?: string; ok?: boolean };
 
-export async function submitOptIn(subdomain: string, _prev: OptInState, formData: FormData): Promise<OptInState> {
+export async function submitOptIn(
+  subdomain: string,
+  program: string | undefined,
+  _prev: OptInState,
+  formData: FormData,
+): Promise<OptInState> {
   const parsed = schema.safeParse({
     name: formData.get("name"),
     email: formData.get("email"),
@@ -32,7 +37,10 @@ export async function submitOptIn(subdomain: string, _prev: OptInState, formData
   }
 
   const subAccount = await requireSiteSubAccount(subdomain);
-  const categories = optInCategoriesForUseCases(subAccount.campaigns.map((c) => c.useCase));
+  const categories = optInCategoriesFor(
+    subAccount.campaigns.map((c) => c.useCase),
+    program,
+  );
   const acceptedCategories = categories.filter((c) => formData.get(OPT_IN_CATEGORY_FIELD_NAME(c)) === "on");
 
   const consentText = [
