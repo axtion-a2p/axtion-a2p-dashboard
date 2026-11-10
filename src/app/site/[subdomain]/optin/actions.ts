@@ -3,7 +3,8 @@
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireSiteSubAccount } from "../data";
-import { optInCategoriesFor, optInDisclosureText, OPT_IN_CATEGORY_FIELD_NAME } from "@/lib/optInCategories";
+import { siteOptInCategories, siteProfile } from "@/lib/siteProfiles";
+import { optInDisclosureText, OPT_IN_CATEGORY_FIELD_NAME } from "@/lib/optInCategories";
 
 const schema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -37,7 +38,8 @@ export async function submitOptIn(
   }
 
   const subAccount = await requireSiteSubAccount(subdomain);
-  const categories = optInCategoriesFor(
+  const categories = siteOptInCategories(
+    siteProfile(subdomain),
     subAccount.campaigns.map((c) => c.useCase),
     program,
   );

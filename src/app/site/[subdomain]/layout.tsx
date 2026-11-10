@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { requireSiteSubAccount } from "./data";
+import { siteProfile } from "@/lib/siteProfiles";
 
 export default async function SiteLayout({ children, params }: LayoutProps<"/site/[subdomain]">) {
   const { subdomain } = await params;
   const subAccount = await requireSiteSubAccount(subdomain);
+  const profile = siteProfile(subdomain);
 
   const initial = subAccount.businessName.trim().charAt(0).toUpperCase() || "?";
 
@@ -19,7 +21,7 @@ export default async function SiteLayout({ children, params }: LayoutProps<"/sit
           </Link>
           <nav className="flex gap-5 text-sm font-medium text-slate-500">
             <Link href={`/optin`} className="transition hover:text-slate-900">
-              Text Alerts
+              {profile?.cta ?? "Text Alerts"}
             </Link>
             <Link href={`/privacy`} className="transition hover:text-slate-900">
               Privacy

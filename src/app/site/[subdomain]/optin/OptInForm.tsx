@@ -12,11 +12,15 @@ export function OptInForm({
   businessName,
   categories,
   program,
+  submitLabel = "Sign up",
+  successMessage = "You're signed up. Reply STOP at any time to opt out.",
 }: {
   subdomain: string;
   businessName: string;
   categories: OptInCategory[];
   program?: string;
+  submitLabel?: string;
+  successMessage?: string;
 }) {
   const action = submitOptIn.bind(null, subdomain, program);
   const [state, formAction, pending] = useActionState(action, initialState);
@@ -31,7 +35,7 @@ export function OptInForm({
             clipRule="evenodd"
           />
         </svg>
-        <span>You&apos;re signed up. Reply STOP at any time to opt out.</span>
+        <span>{successMessage}</span>
       </div>
     );
   }
@@ -115,7 +119,7 @@ export function OptInForm({
         disabled={pending}
         className="inline-flex items-center justify-center rounded-lg bg-slate-900 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-slate-700 disabled:opacity-50"
       >
-        {pending ? "Submitting…" : "Sign up"}
+        {pending ? "Submitting…" : submitLabel}
       </button>
     </form>
   );

@@ -1,9 +1,11 @@
 import { requireSiteSubAccount } from "../data";
+import { siteProfile } from "@/lib/siteProfiles";
 
 export default async function PrivacyPage({ params }: PageProps<"/site/[subdomain]/privacy">) {
   const { subdomain } = await params;
   const subAccount = await requireSiteSubAccount(subdomain);
   const name = subAccount.businessName;
+  const profile = siteProfile(subdomain);
 
   return (
     <div className="mx-auto max-w-2xl rounded-2xl border border-slate-200 bg-white p-8 shadow-sm sm:p-10">
@@ -13,19 +15,22 @@ export default async function PrivacyPage({ params }: PageProps<"/site/[subdomai
 
         <p>
           This Privacy Policy describes how {name} (&quot;we&quot;, &quot;us&quot;, or &quot;our&quot;) collects,
-          uses, and protects information you provide when you sign up to receive SMS text messages from us.
+          uses, and protects information you provide when {profile ? `you request ${profile.offering} or ` : "you "}sign up to receive SMS text messages from us.
         </p>
+        {profile && <p>{profile.about(name)}</p>}
 
         <h2 className="text-lg font-medium text-slate-900">Information we collect</h2>
         <p>
-          When you opt in to receive text messages, we collect your name and mobile phone number. We may also
-          collect information you share with us in the course of using our services.
+          {profile
+            ? `When you submit our form to request ${profile.offering}, we collect your name, email address, and mobile phone number. We may also collect information you share with us when we follow up with you.`
+            : "When you opt in to receive text messages, we collect your name and mobile phone number. We may also collect information you share with us in the course of using our services."}
         </p>
 
         <h2 className="text-lg font-medium text-slate-900">How we use your information</h2>
         <p>
-          We use your phone number to send you SMS messages related to your account and our services, such as
-          account notifications, updates, and other communications you&apos;ve opted in to receive.
+          {profile
+            ? `We use your contact details to respond to your request and to follow up with ${profile.offering}. If you separately agree to receive text messages, we use your mobile number to send you marketing and promotional SMS messages about our funding products. Submitting the form does not require you to agree to text messages.`
+            : "We use your phone number to send you SMS messages related to your account and our services, such as account notifications, updates, and other communications you've opted in to receive."}
         </p>
 
         <h2 className="text-lg font-medium text-slate-900">Sharing your information</h2>

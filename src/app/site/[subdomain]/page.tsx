@@ -2,11 +2,15 @@ import Link from "next/link";
 import { requireSiteSubAccount, siteVertical } from "./data";
 import { PhoneIllustration } from "./PhoneIllustration";
 import { themeForVertical } from "@/lib/siteTheme";
+import { siteProfile } from "@/lib/siteProfiles";
+import { LeadGenHome } from "./LeadGenHome";
 
 export default async function SiteHome({ params }: PageProps<"/site/[subdomain]">) {
   const { subdomain } = await params;
   const subAccount = await requireSiteSubAccount(subdomain);
   const name = subAccount.businessName;
+  const profile = siteProfile(subdomain);
+  if (profile) return <LeadGenHome name={name} profile={profile} />;
   const theme = themeForVertical(siteVertical(subAccount));
 
   const steps = [

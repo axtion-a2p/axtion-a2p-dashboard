@@ -1,9 +1,11 @@
 import { requireSiteSubAccount } from "../data";
+import { siteProfile } from "@/lib/siteProfiles";
 
 export default async function TermsPage({ params }: PageProps<"/site/[subdomain]/terms">) {
   const { subdomain } = await params;
   const subAccount = await requireSiteSubAccount(subdomain);
   const name = subAccount.businessName;
+  const profile = siteProfile(subdomain);
 
   return (
     <div className="mx-auto max-w-2xl rounded-2xl border border-slate-200 bg-white p-8 shadow-sm sm:p-10">
@@ -11,9 +13,21 @@ export default async function TermsPage({ params }: PageProps<"/site/[subdomain]
         <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Terms of Service</h1>
         <p className="text-slate-500">Last updated {new Date().toLocaleDateString()}</p>
 
+        {profile && (
+          <>
+            <h2 className="text-lg font-medium text-slate-900">Requests for {profile.offering}</h2>
+            <p>
+              {profile.about(name)} Submitting our form is a request to receive information about {profile.offering}; it
+              is not an application for, or a commitment to accept, any funding. Funding is subject to review and
+              approval, and any offer will be provided to you separately.
+            </p>
+          </>
+        )}
+
         <h2 className="text-lg font-medium text-slate-900">SMS messaging program</h2>
         <p>
-          By opting in to receive SMS text messages from {name}, you agree to these Terms of Service. Message
+          By opting in to receive SMS text messages from {name}, you agree to these Terms of Service.
+          {profile ? " Text messaging is optional, and consent is not a condition of purchase or of receiving funding." : ""} Message
           frequency may vary. Message and data rates may apply, depending on your mobile carrier and plan.
         </p>
 
