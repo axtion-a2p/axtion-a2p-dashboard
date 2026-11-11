@@ -59,8 +59,19 @@ export type TextGridCampaign = {
   campaignEnabled?: boolean;
   SecondaryDcaSharingStatus?: "PENDING" | "ACCEPTED" | "DECLINED" | string;
   SecondaryDcaDeclineReason?: string;
+  // Both documented on the campaign GET responses (docs.textgrid.com), free-form strings.
+  SecondaryDcaDeclineExplanation?: string;
+  SecondaryDcaDeclineSuggestion?: string;
+  brandStatus?: string;
   [key: string]: unknown;
 };
+
+/** Reason + explanation + suggested fix, whichever of them TextGrid supplied. */
+function declineMessage(c: TextGridCampaign): string {
+  const parts = [c.SecondaryDcaDeclineReason, c.SecondaryDcaDeclineExplanation, c.SecondaryDcaDeclineSuggestion && `Suggestion: ${c.SecondaryDcaDeclineSuggestion}`]
+    .filter((p): p is string => typeof p === "string" && p.trim().length > 0);
+  return parts.length ? parts.join(" — ") : "Declined by carrier review";
+}
 
 /** Best-effort mapping from Twilio-style business_type strings to TextGrid's entityType enum. */
 function inferEntityType(businessType: string): NonNullable<BrandInput["entityType"]> {
@@ -242,7 +253,7 @@ export class TextGridProvider implements ProviderAdapter {
     return {
       providerCampaignId: campaign.campaignId,
       stage,
-      failureReason: declined ? (campaign.SecondaryDcaDeclineReason ?? "Declined by carrier review") : undefined,
+      failureReason: declined ? declineMessage(campaign) : undefined,
       enabled: campaign.campaignEnabled !== false,
       raw: campaign,
     };
