@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { getProvider } from "@/lib/providers";
+import { credentialsFor, getProvider } from "@/lib/providers";
 import { TextGridProvider } from "@/lib/providers/textgridProvider";
 
 /**
@@ -12,24 +12,22 @@ import { TextGridProvider } from "@/lib/providers/textgridProvider";
 export async function ensureTextGridAccount(subAccountId: string) {
   const sa = await db.subAccount.findUniqueOrThrow({ where: { id: subAccountId } });
 
-  if (sa.providerAccountSid) {
-    // One override pair is shared by both providers today; sending a Twilio
-    // SID to TextGrid would just fail with a confusing auth error.
-    if (sa.providerAccountSid.startsWith("AC")) {
-      throw new Error(
-        "This sub-account's dedicated credentials are a Twilio account. TextGrid needs its own account, which requires per-provider credentials on the sub-account."
-      );
-    }
-    return sa;
-  }
+  // Per-provider credentials (or a legacy pair that is actually a TextGrid
+  // one) already on file — reuse them.
+  if (credentialsFor(sa, "TEXTGRID").sid) return sa;
 
   const master = getProvider("TEXTGRID");
   if (!(master instanceof TextGridProvider)) throw new Error("TextGrid provider unavailable.");
   const account = await master.createSubAccount(sa.businessName);
 
+  // Persist immediately: the auth token and webhook secret are only returned once.
   const updated = await db.subAccount.update({
     where: { id: sa.id },
-    data: { providerAccountSid: account.sid, providerAuthToken: account.auth_token },
+    data: {
+      textgridAccountSid: account.sid,
+      textgridAuthToken: account.auth_token,
+      textgridWebhookSecret: account.webhook_secret ?? null,
+    },
   });
   await db.statusEvent.create({
     data: {

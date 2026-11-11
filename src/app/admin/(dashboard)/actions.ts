@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { destroyAdminSession, requireAdmin } from "@/lib/auth";
-import { getProvider } from "@/lib/providers";
+import { credentialsFor, getProvider, getProviderFor } from "@/lib/providers";
 import type { CampaignInput } from "@/lib/providers/types";
 import { generateUniqueSubdomain } from "@/lib/generateSubdomain";
 import { subdomainUrl } from "@/lib/subdomain";
@@ -26,7 +26,7 @@ export async function syncSubAccount(subAccountId: string) {
   });
 
   function providerFor(name: "TWILIO" | "TEXTGRID") {
-    return getProvider(name, subAccount.providerAccountSid, subAccount.providerAuthToken);
+    return getProviderFor(subAccount, name);
   }
 
   for (const brand of subAccount.brands) {
@@ -88,7 +88,7 @@ export async function syncPhoneNumbers(subAccountId: string, formData: FormData)
   const subAccount = await db.subAccount.findUniqueOrThrow({ where: { id: subAccountId } });
 
   try {
-    const provider = getProvider(providerName, subAccount.providerAccountSid, subAccount.providerAuthToken);
+    const provider = getProviderFor(subAccount, providerName);
     const numbers = await provider.listPhoneNumbers();
     for (const n of numbers) {
       await db.phoneNumber.upsert({
@@ -122,7 +122,7 @@ export async function assignNumberToCampaign(subAccountId: string, formData: For
     if (!campaign.messagingServiceSid) throw new Error("Campaign has no messaging service");
     if (!phoneNumber.providerSid) throw new Error("Phone number has no provider SID");
 
-    const provider = getProvider(campaign.provider, subAccount.providerAccountSid, subAccount.providerAuthToken);
+    const provider = getProviderFor(subAccount, campaign.provider);
     await provider.assignNumberToMessagingService(campaign.messagingServiceSid, phoneNumber.providerSid);
     await db.phoneNumber.update({
       where: { id: phoneNumberId },
@@ -148,7 +148,7 @@ export async function purchaseAndAssignNumber(subAccountId: string, formData: Fo
   const subAccount = await db.subAccount.findUniqueOrThrow({ where: { id: subAccountId } });
 
   try {
-    const provider = getProvider(providerName, subAccount.providerAccountSid, subAccount.providerAuthToken);
+    const provider = getProviderFor(subAccount, providerName);
     const purchased = await provider.purchaseNumber(e164);
 
     const phoneNumber = await db.phoneNumber.create({
@@ -227,7 +227,7 @@ export async function updateCampaignDetails(campaignId: string, formData: FormDa
     .slice(0, 5);
 
   try {
-    const provider = getProvider(campaign.provider, subAccount.providerAccountSid, subAccount.providerAuthToken);
+    const provider = getProviderFor(subAccount, campaign.provider);
     const input: CampaignInput = {
       messagingServiceSid: campaign.messagingServiceSid ?? "",
       useCase: d.useCase,
@@ -303,17 +303,34 @@ export async function setProviderCredentials(subAccountId: string, formData: For
   const sidInput = String(formData.get("providerAccountSid") || "").trim();
   const tokenInput = String(formData.get("providerAuthToken") || "").trim();
 
+  // The SID prefix decides which provider this is for (AC... = Twilio). Each
+  // provider has its own columns, so setting one never disturbs the other.
+  const detectedProvider: "TWILIO" | "TEXTGRID" = sidInput.startsWith("AC") ? "TWILIO" : "TEXTGRID";
+
   if (!sidInput) {
-    await db.subAccount.update({ where: { id: subAccountId }, data: { providerAccountSid: null, providerAuthToken: null } });
-    await logEvent(subAccountId, "SUB_ACCOUNT", "Dedicated provider account override cleared — back to platform default.");
-  } else {
-    // A blank token keeps whatever's already stored, so updating just the SID
-    // doesn't require re-typing a token that's already set.
-    const existing = await db.subAccount.findUniqueOrThrow({ where: { id: subAccountId } });
-    const finalToken = tokenInput || existing.providerAuthToken;
     await db.subAccount.update({
       where: { id: subAccountId },
-      data: { providerAccountSid: sidInput, providerAuthToken: finalToken },
+      data: {
+        providerAccountSid: null,
+        providerAuthToken: null,
+        twilioAccountSid: null,
+        twilioAuthToken: null,
+        textgridAccountSid: null,
+        textgridAuthToken: null,
+      },
+    });
+    await logEvent(subAccountId, "SUB_ACCOUNT", "Dedicated provider account overrides cleared — back to platform default.");
+  } else {
+    // A blank token keeps whatever's already stored for that provider, so
+    // updating just the SID doesn't require re-typing a token that's already set.
+    const existing = await db.subAccount.findUniqueOrThrow({ where: { id: subAccountId } });
+    const finalToken = tokenInput || credentialsFor(existing, detectedProvider).token;
+    await db.subAccount.update({
+      where: { id: subAccountId },
+      data:
+        detectedProvider === "TWILIO"
+          ? { twilioAccountSid: sidInput, twilioAuthToken: finalToken }
+          : { textgridAccountSid: sidInput, textgridAuthToken: finalToken },
     });
 
     // Verify immediately instead of silently storing a value that might be
@@ -321,7 +338,6 @@ export async function setProviderCredentials(subAccountId: string, formData: For
     // days. This can't catch "saved on the wrong sub-account row" (that's a
     // signup-time dedupe problem, handled separately), but it does catch bad
     // credentials, typos, and auth mismatches on the spot.
-    const detectedProvider: "TWILIO" | "TEXTGRID" = sidInput.startsWith("AC") ? "TWILIO" : "TEXTGRID";
     try {
       const provider = getProvider(detectedProvider, sidInput, finalToken);
       await provider.listPhoneNumbers();
@@ -355,7 +371,7 @@ export async function adoptProviderBrand(subAccountId: string, formData: FormDat
   const existing = subAccount.brands.find((b) => b.provider === provider);
 
   try {
-    const providerAdapter = getProvider(provider, subAccount.providerAccountSid, subAccount.providerAuthToken);
+    const providerAdapter = getProviderFor(subAccount, provider);
     const status = await providerAdapter.getBrandStatus(providerBrandId);
 
     await db.brand.upsert({
@@ -404,7 +420,7 @@ export async function adoptProviderCampaign(subAccountId: string, formData: Form
   const existing = subAccount.campaigns.find((c) => c.provider === provider && c.providerCampaignId === providerCampaignId);
 
   try {
-    const providerAdapter = getProvider(provider, subAccount.providerAccountSid, subAccount.providerAuthToken);
+    const providerAdapter = getProviderFor(subAccount, provider);
     const status = await providerAdapter.getCampaignStatus(messagingServiceSid, providerCampaignId);
     const raw = status.raw as Record<string, unknown>;
 

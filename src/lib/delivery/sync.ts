@@ -5,6 +5,7 @@
 // (queued -> sent -> delivered) — upserting by providerSid makes that safe.
 
 import { db } from "@/lib/db";
+import { credentialsFor } from "@/lib/providers";
 import { resolveTwilioDeliveryConfig, TwilioDeliveryClient } from "./twilioDeliveryClient";
 import { mapRawStatusToDeliveryStatus } from "./statusMapping";
 
@@ -25,7 +26,7 @@ export async function syncDeliveryEventsForSubAccount(
     ? new Date(Date.now() - sinceDays * 24 * 60 * 60 * 1000)
     : new Date(Date.now() - DEFAULT_BACKFILL_WINDOW_DAYS * 24 * 60 * 60 * 1000);
 
-  const config = resolveTwilioDeliveryConfig(subAccount.providerAccountSid, subAccount.providerAuthToken);
+  const config = resolveTwilioDeliveryConfig(credentialsFor(subAccount, "TWILIO").sid, credentialsFor(subAccount, "TWILIO").token);
   const client = new TwilioDeliveryClient(config);
 
   const [messages, calls] = await Promise.all([client.listMessagesSince(since), client.listCallsSince(since)]);

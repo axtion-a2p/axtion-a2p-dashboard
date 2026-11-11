@@ -62,5 +62,41 @@ export function getProvider(
   });
 }
 
+/** The credential columns on a SubAccount row that decide which provider account its calls go to. */
+export type SubAccountCredentialFields = {
+  providerAccountSid: string | null;
+  providerAuthToken: string | null;
+  twilioAccountSid: string | null;
+  twilioAuthToken: string | null;
+  textgridAccountSid: string | null;
+  textgridAuthToken: string | null;
+};
+
+/**
+ * Dedicated credentials for one provider on a sub-account, or nulls when it
+ * uses the platform default. The per-provider columns win; the legacy shared
+ * pair only counts when its SID prefix matches the provider (AC... = Twilio),
+ * so a Twilio SID is never sent to TextGrid or vice versa.
+ */
+export function credentialsFor(
+  sa: SubAccountCredentialFields,
+  provider: ProviderName
+): { sid: string | null; token: string | null } {
+  const sid = provider === "TWILIO" ? sa.twilioAccountSid : sa.textgridAccountSid;
+  const token = provider === "TWILIO" ? sa.twilioAuthToken : sa.textgridAuthToken;
+  if (sid) return { sid, token };
+  const legacyIsTwilio = sa.providerAccountSid?.startsWith("AC") ?? false;
+  if (sa.providerAccountSid && legacyIsTwilio === (provider === "TWILIO")) {
+    return { sid: sa.providerAccountSid, token: sa.providerAuthToken };
+  }
+  return { sid: null, token: null };
+}
+
+/** getProvider() with the credentials resolved from the sub-account row. */
+export function getProviderFor(sa: SubAccountCredentialFields, provider: ProviderName): ProviderAdapter {
+  const { sid, token } = credentialsFor(sa, provider);
+  return getProvider(provider, sid, token);
+}
+
 export type { ProviderAdapter } from "./types";
 export * from "./types";

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
+import { credentialsFor } from "@/lib/providers";
 import { BrandForm } from "./BrandForm";
 import { CampaignForm } from "./CampaignForm";
 import { NumbersPanel } from "./NumbersPanel";
@@ -384,8 +385,8 @@ export default async function SubAccountDashboard({ params, searchParams }: Page
           token={token}
           phoneNumbers={subAccount.phoneNumbers}
           campaigns={subAccount.campaigns}
-          providerAccountSid={subAccount.providerAccountSid}
-          providerAuthToken={subAccount.providerAuthToken}
+          providerAccountSid={credentialsFor(subAccount, searchProvider).sid}
+          providerAuthToken={credentialsFor(subAccount, searchProvider).token}
           areaCode={areaCode}
           searchProvider={searchProvider}
         />

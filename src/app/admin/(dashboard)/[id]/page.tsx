@@ -7,7 +7,7 @@ import { stageColor, healthColor, stageLabel } from "@/lib/status";
 import { subdomainUrl } from "@/lib/subdomain";
 import { CAMPAIGN_USE_CASES } from "@/lib/campaignUseCases";
 import { carrierStatusLabel, carrierStatusColor } from "@/lib/campaignHealth";
-import { getProvider } from "@/lib/providers";
+import { credentialsFor, getProviderFor } from "@/lib/providers";
 import { getCurrentAdminUser, getAccessibleSubAccountIds } from "@/lib/auth";
 import type { AvailableNumber } from "@/lib/providers/types";
 import {
@@ -64,7 +64,7 @@ export default async function AdminSubAccountPage({ params, searchParams }: Page
   let searchError: string | undefined;
   if (areaCode) {
     try {
-      const provider = getProvider(searchProvider, subAccount.providerAccountSid, subAccount.providerAuthToken);
+      const provider = getProviderFor(subAccount, searchProvider);
       availableNumbers = await provider.searchAvailableNumbers(areaCode);
     } catch (err) {
       searchError = err instanceof Error ? err.message : "Search failed";
@@ -141,13 +141,16 @@ export default async function AdminSubAccountPage({ params, searchParams }: Page
       <section className="mb-8 rounded-xl border border-neutral-200 p-6">
         <h2 className="mb-3 text-lg font-medium text-neutral-900">Provider account</h2>
         <p className="mb-3 text-sm text-neutral-600">
-          {subAccount.providerAccountSid
-            ? `Using a dedicated account: ${subAccount.providerAccountSid}`
-            : "Using the platform-wide default account for both providers."}
+          {[
+            ["Twilio", credentialsFor(subAccount, "TWILIO").sid],
+            ["TextGrid", credentialsFor(subAccount, "TEXTGRID").sid],
+          ]
+            .map(([label, sid]) => `${label}: ${sid ? `dedicated account ${sid}` : "platform default"}`)
+            .join(" · ")}
         </p>
         <details>
           <summary className="cursor-pointer text-xs font-medium text-primary underline">
-            {subAccount.providerAccountSid ? "Change or clear" : "Set a dedicated account"}
+            Set or clear dedicated accounts
           </summary>
           <form action={setProviderCredentials.bind(null, subAccount.id)} className="mt-3 space-y-3">
             <div>
@@ -158,7 +161,6 @@ export default async function AdminSubAccountPage({ params, searchParams }: Page
                 id="providerAccountSid"
                 name="providerAccountSid"
                 type="text"
-                defaultValue={subAccount.providerAccountSid ?? ""}
                 placeholder="AC… or TextGrid account SID"
                 className="mt-1 w-full rounded-md border border-neutral-300 px-2 py-1.5 text-xs"
               />
@@ -171,11 +173,11 @@ export default async function AdminSubAccountPage({ params, searchParams }: Page
                 id="providerAuthToken"
                 name="providerAuthToken"
                 type="password"
-                placeholder={subAccount.providerAuthToken ? "•••••••••••••••• (leave as-is to keep)" : "Auth token"}
+                placeholder="Auth token (blank keeps the stored one for that provider)"
                 className="mt-1 w-full rounded-md border border-neutral-300 px-2 py-1.5 text-xs"
               />
             </div>
-            <p className="text-xs text-neutral-500">Leave both blank and save to clear the override.</p>
+            <p className="text-xs text-neutral-500">Enter a single SID to set just that provider (AC… = Twilio). Leave both blank and save to clear both providers.</p>
             <button className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-white hover:bg-primary-hover">
               Save
             </button>

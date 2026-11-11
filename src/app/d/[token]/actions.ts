@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { getProvider } from "@/lib/providers";
+import { getProviderFor, credentialsFor } from "@/lib/providers";
 import { ensureTextGridAccount } from "@/lib/textgridAccount";
 import type { BrandInput, CampaignInput } from "@/lib/providers/types";
 import { healthForStatus } from "@/lib/campaignHealth";
@@ -73,7 +73,7 @@ export async function submitBrand(token: string, _prev: FormState, formData: For
   try {
     // TextGrid clients get their own TextGrid sub-account so the brand and campaign aren't registered on the master account.
     const account = d.provider === "TEXTGRID" ? await ensureTextGridAccount(subAccount.id) : subAccount;
-    const provider = getProvider(d.provider, account.providerAccountSid, account.providerAuthToken);
+    const provider = getProviderFor(account, d.provider);
     const status = await provider.submitBrand(input);
 
     await db.brand.upsert({
@@ -134,7 +134,7 @@ export async function submitBrand(token: string, _prev: FormState, formData: For
       data: {
         subAccountId: subAccount.id,
         entityType: "BRAND",
-        message: `Brand submitted to ${d.provider} (account override on file: ${subAccount.providerAccountSid ?? "none — using platform default"}) — status: ${status.stage}.`,
+        message: `Brand submitted to ${d.provider} (account override on file: ${credentialsFor(subAccount, d.provider).sid ?? "none — using platform default"}) — status: ${status.stage}.`,
         actor: "system",
       },
     });
@@ -187,7 +187,7 @@ export async function submitCampaign(token: string, _prev: FormState, formData: 
     .slice(0, 5);
 
   try {
-    const provider = getProvider(d.provider, subAccount.providerAccountSid, subAccount.providerAuthToken);
+    const provider = getProviderFor(subAccount, d.provider);
     const service = await provider.createMessagingService(`${subAccount.businessName} - Messaging Service`);
 
     const input: CampaignInput = {
@@ -293,7 +293,7 @@ export async function editCampaign(token: string, campaignId: string, formData: 
     .slice(0, 5);
 
   try {
-    const provider = getProvider(campaign.provider, subAccount.providerAccountSid, subAccount.providerAuthToken);
+    const provider = getProviderFor(subAccount, campaign.provider);
     const input: CampaignInput = {
       messagingServiceSid: campaign.messagingServiceSid,
       useCase: campaign.useCase,
@@ -365,7 +365,7 @@ export async function submitDraftCampaign(token: string, campaignId: string) {
   }
 
   try {
-    const provider = getProvider(campaign.provider, subAccount.providerAccountSid, subAccount.providerAuthToken);
+    const provider = getProviderFor(subAccount, campaign.provider);
     const service = await provider.createMessagingService(`${subAccount.businessName} - Messaging Service`);
 
     const input: CampaignInput = {
@@ -419,7 +419,7 @@ export async function purchaseAndAssignNumber(token: string, formData: FormData)
   const subAccount = await requireSubAccount(token);
 
   try {
-    const provider = getProvider(providerName, subAccount.providerAccountSid, subAccount.providerAuthToken);
+    const provider = getProviderFor(subAccount, providerName);
     const purchased = await provider.purchaseNumber(e164);
 
     const phoneNumber = await db.phoneNumber.create({

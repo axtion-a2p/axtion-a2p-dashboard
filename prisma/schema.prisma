@@ -88,6 +88,23 @@ model SubAccount {
   providerAccountSid   String? // Twilio Account SID or TextGrid Account SID
   providerAuthToken    String? // Twilio Auth Token or TextGrid Auth Token
 
+  // Per-provider dedicated accounts. A client can have both (the payment-driven
+  // provisioning endpoint creates one of each). These win over the legacy pair
+  // above, which is only consulted when its SID prefix matches the provider
+  // being asked for (AC... = Twilio, anything else = TextGrid).
+  twilioAccountSid     String?
+  twilioAuthToken      String?
+  textgridAccountSid   String?
+  textgridAuthToken    String?
+  textgridWebhookSecret String? // per-account secret for verifying X-TextGrid-Signature
+
+  // Provisioning (POST /api/provision). externalRef is the caller's idempotency
+  // key — the payment/checkout id — so a retried call can never create a second
+  // sub-account or a second pair of provider accounts for the same payment.
+  externalRef          String?   @unique
+  provisionedAt        DateTime? // set once both provider accounts exist
+  provisionLockedAt    DateTime? // short lease so concurrent retries don't both create accounts
+
   // GoHighLevel context (app.axtion.ai whitelabel sub-account)
   ghlLocationId   String?
   ghlLocationName String?
