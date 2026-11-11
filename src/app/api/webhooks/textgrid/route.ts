@@ -1,14 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { syncSubAccount } from "@/app/admin/(dashboard)/actions";
+import { verifyTextGridSignature } from "@/lib/textgridSignature";
 
 export const dynamic = "force-dynamic";
 
 // TextGrid's TCR event callbacks are configured manually in the TextGrid
 // Dashboard (Settings → Advanced Settings → TCR Event Callback URL) — there's
-// no API to register them. TextGrid doesn't document a request-signing scheme,
-// so register the callback URL with a shared secret appended as a second query
-// param: .../api/webhooks/textgrid?secret=...
+// no API to register them.
+//
+// Authentication accepts EITHER of:
+//  1. a valid X-TextGrid-Signature header (HMAC-SHA1 keyed by the account's Webhook
+//     Secret over the public URL + raw body — see lib/textgridSignature.ts). Only the
+//     platform account's secret (TEXTGRID_WEBHOOK_SECRET) is known here; per-client
+//     sub-account secrets are not stored, so their events can't pass this check, or
+//  2. the legacy shared secret appended as a second query param when registering the
+//     callback URL: .../api/webhooks/textgrid?secret=...   (this is part of the signed
+//     URL, so it also works alongside signing)
 //
 // TextGrid appends its own query param to differentiate these from regular
 // Breeze API callbacks: `?TCREvent={eventType}` (e.g. BRAND_IDENTITY_STATUS_UPDATE,
@@ -18,8 +26,20 @@ export const dynamic = "force-dynamic";
 // Like the Twilio webhook, this only triggers a re-sync rather than trusting
 // the body as authoritative.
 export async function POST(request: NextRequest) {
-  const secret = request.nextUrl.searchParams.get("secret");
-  if (!process.env.TEXTGRID_WEBHOOK_SECRET || secret !== process.env.TEXTGRID_WEBHOOK_SECRET) {
+  const webhookSecret = process.env.TEXTGRID_WEBHOOK_SECRET;
+  // Read the body raw: the signature covers the exact bytes TextGrid sent.
+  const rawBody = await request.text();
+
+  // The URL TextGrid actually called (behind Vercel's proxy, nextUrl may not carry the public host).
+  const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host") ?? request.nextUrl.host;
+  const proto = request.headers.get("x-forwarded-proto") ?? "https";
+  const publicUrl = `${proto}://${host}${request.nextUrl.pathname}${request.nextUrl.search}`;
+
+  const signed =
+    !!webhookSecret &&
+    verifyTextGridSignature(webhookSecret, request.headers.get("x-textgrid-signature"), publicUrl, rawBody);
+  const sharedSecretOk = !!webhookSecret && request.nextUrl.searchParams.get("secret") === webhookSecret;
+  if (!signed && !sharedSecretOk) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
@@ -27,7 +47,7 @@ export async function POST(request: NextRequest) {
 
   let body: Record<string, unknown> = {};
   try {
-    body = await request.json();
+    body = JSON.parse(rawBody);
   } catch {
     // ignore — treated as an empty payload below
   }
