@@ -22,7 +22,7 @@ export default async function OptInPage({ params, searchParams }: PageProps<"/si
       </h1>
       <p className="mt-2 text-sm text-slate-600">
         {profile
-          ? `${profile.about(name)} Share your details below and a representative will follow up with ${profile.offering}. Funding is subject to review and approval.`
+          ? `${profile.about(name)} Share your details below and a representative will follow up with ${profile.offering}.${profile.optinNote}`
           : `Choose which updates you'd like from ${name} by text. You can opt out at any time.`}
       </p>
       <div className="mt-8">

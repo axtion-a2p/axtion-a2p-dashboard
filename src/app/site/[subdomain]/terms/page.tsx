@@ -17,9 +17,7 @@ export default async function TermsPage({ params }: PageProps<"/site/[subdomain]
           <>
             <h2 className="text-lg font-medium text-slate-900">Requests for {profile.offering}</h2>
             <p>
-              {profile.about(name)} Submitting our form is a request to receive information about {profile.offering}; it
-              is not an application for, or a commitment to accept, any funding. Funding is subject to review and
-              approval, and any offer will be provided to you separately.
+              {profile.about(name)} Submitting our form is a request to receive information about {profile.offering}; it {profile.termsNote}
             </p>
           </>
         )}
@@ -27,7 +25,7 @@ export default async function TermsPage({ params }: PageProps<"/site/[subdomain]
         <h2 className="text-lg font-medium text-slate-900">SMS messaging program</h2>
         <p>
           By opting in to receive SMS text messages from {name}, you agree to these Terms of Service.
-          {profile ? " Text messaging is optional, and consent is not a condition of purchase or of receiving funding." : ""} Message
+          {profile ? ` Text messaging is optional, and consent is not a condition of purchase${profile.consentSuffix}.` : ""} Message
           frequency may vary. Message and data rates may apply, depending on your mobile carrier and plan.
         </p>
 

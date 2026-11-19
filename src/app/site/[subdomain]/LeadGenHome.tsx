@@ -9,17 +9,10 @@ export function LeadGenHome({ name, profile }: { name: string; profile: LeadGenP
   ];
 
   const faqs = [
-    {
-      q: `Is ${name} a direct lender?`,
-      a: `Yes. ${name} is a direct lender — we provide funding ourselves rather than passing your information along to a marketplace of other lenders.`,
-    },
-    {
-      q: "Does submitting the form commit me to anything?",
-      a: "No. Submitting the form is a request to hear about your options. Funding is subject to review and approval, and you decide whether to move forward.",
-    },
+    ...profile.faqs(name),
     {
       q: "Will I receive text messages?",
-      a: "Only if you choose to. Text messaging is a separate, optional checkbox on the form. You can submit the form without agreeing to receive texts, and consent is not a condition of any purchase or of receiving funding.",
+      a: `Only if you choose to. Text messaging is a separate, optional checkbox on the form. You can submit the form without agreeing to receive texts, and consent is not a condition of any purchase${profile.consentSuffix}.`,
     },
     {
       q: "How do I stop receiving texts?",
@@ -48,7 +41,7 @@ export function LeadGenHome({ name, profile }: { name: string; profile: LeadGenP
           >
             {profile.cta}
           </Link>
-          <span className="text-sm text-slate-500">Takes about a minute. Funding subject to review and approval.</span>
+          <span className="text-sm text-slate-500">Takes about a minute.{profile.disclaimer ? ` ${profile.disclaimer}` : ""}</span>
         </div>
       </section>
 
