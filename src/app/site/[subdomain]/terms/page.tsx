@@ -15,9 +15,10 @@ export default async function TermsPage({ params }: PageProps<"/site/[subdomain]
 
         {profile && (
           <>
-            <h2 className="text-lg font-medium text-slate-900">Requests for {profile.offering}</h2>
+            <h2 className="text-lg font-medium text-slate-900">{profile.copy?.termsHeading ?? `Requests for ${profile.offering}`}</h2>
             <p>
-              {profile.about(name)} Submitting our form is a request to receive information about {profile.offering}; it {profile.termsNote}
+              {profile.copy?.termsBody?.(name) ??
+                `${profile.about(name)} Submitting our form is a request to receive information about ${profile.offering}; it ${profile.termsNote}`}
             </p>
           </>
         )}

@@ -29,7 +29,8 @@ export default async function PrivacyPage({ params }: PageProps<"/site/[subdomai
         <h2 className="text-lg font-medium text-slate-900">How we use your information</h2>
         <p>
           {profile
-            ? `We use your contact details to respond to your request and to follow up with ${profile.offering}. If you separately agree to receive text messages, we use your mobile number to send you marketing and promotional SMS messages about ${profile.smsTopic}. Submitting the form does not require you to agree to text messages.`
+            ? (profile.copy?.privacyUse ??
+              `We use your contact details to respond to your request and to follow up with ${profile.offering}. If you separately agree to receive text messages, we use your mobile number to send you marketing and promotional SMS messages about ${profile.smsTopic}. Submitting the form does not require you to agree to text messages.`)
             : "We use your phone number to send you SMS messages related to your account and our services, such as account notifications, updates, and other communications you've opted in to receive."}
         </p>
 

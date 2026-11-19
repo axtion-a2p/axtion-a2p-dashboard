@@ -32,6 +32,22 @@ export type LeadGenProfile = {
   termsNote: string;
   /** The two business-specific FAQ entries shown first on the landing page. */
   faqs: (businessName: string) => { q: string; a: string }[];
+  /**
+   * Optional wording overrides for sites whose request is not "get <offering>" (e.g. a demo
+   * call). Anything left out falls back to the default text derived from `offering`.
+   */
+  copy?: {
+    steps?: (businessName: string) => { title: string; description: string }[];
+    services?: { heading: string; items: { title: string; description: string }[]; footnote: string };
+    closing?: (businessName: string) => { heading: string; text: string };
+    formTitle?: (businessName: string) => string;
+    formIntro?: (businessName: string) => string;
+    submitLabel?: string;
+    successMessage?: (businessName: string) => string;
+    termsHeading?: string;
+    termsBody?: (businessName: string) => string;
+    privacyUse?: string;
+  };
 };
 
 const NEXGEN: LeadGenProfile = {
@@ -63,28 +79,67 @@ const NEXGEN: LeadGenProfile = {
 
 const AXTION: LeadGenProfile = {
   kind: "lead-gen",
-  cta: "Get Offers & Updates",
-  badge: "REI Operating Tools",
-  headline: (name) => `Offers and product updates from ${name}`,
+  cta: "Schedule a Demo",
+  badge: "Communications CRM",
+  headline: (name) => `Schedule a demo call with ${name}`,
   subtext: (name) =>
-    `${name} builds AI operating tools for real estate investors. Tell us a little about you, and we'll follow up with offers and product updates that may be useful to you.`,
-  about: (name) => `${name} provides AI-powered operating tools for real estate investors.`,
-  offering: "offers and product updates",
+    `${name} provides a communications CRM with a shared inbox, AI-powered follow-up, automations and pipeline tracking. Request a demo call below and a team member will reach out to schedule it.`,
+  about: (name) =>
+    `${name} provides Axtion, a communications CRM — a shared inbox, AI-powered follow-up, automations and pipeline tracking — for teams that organize outreach and respond with context.`,
+  offering: "a demo call",
   smsTopic: "our products and services",
   disclaimer: "",
   optinNote: "",
   consentSuffix: "",
-  termsNote: "is not a purchase and does not commit you to anything. Any offer will be provided to you separately.",
+  termsNote: "is not a purchase and does not commit you to anything.",
   faqs: (name) => [
     {
       q: `What is ${name}?`,
-      a: `${name} provides AI-powered operating tools for real estate investors. This page lets you ask to hear about our offers and product updates.`,
+      a: `${name} provides Axtion, a communications CRM based in Phoenix, Arizona. Teams use it to bring calls, SMS, email and social conversations, leads and AI-powered follow-up into one workspace.`,
     },
     {
-      q: "Does submitting the form commit me to anything?",
-      a: "No. Submitting the form is a request to hear about our offers and product updates. You decide whether to move forward.",
+      q: "What happens after I submit the form?",
+      a: "A member of our team contacts you at the email address or phone number you provide to schedule your demo call. Submitting the form does not commit you to anything, and you decide whether to move forward.",
+    },
+    {
+      q: "What will the demo cover?",
+      a: "A walkthrough of the Axtion platform — the shared inbox, AI follow-up, automations and pipeline — and the plan options, with time for your questions.",
     },
   ],
+  copy: {
+    steps: (name) => [
+      { title: "Request a demo", description: "Share your name, email and mobile number through our short secure form." },
+      { title: "We reach out", description: `A ${name} team member contacts you to schedule your demo call.` },
+      { title: "See the platform", description: "On the call we walk through Axtion's inbox, AI follow-up, automations and pipeline, and answer your questions." },
+    ],
+    services: {
+      heading: "What Axtion offers",
+      items: [
+        { title: "Shared inbox", description: "Bring calls, SMS, email and social conversations into one team view, tied to the contact." },
+        { title: "AI follow-up", description: "Configure AI assistants around your team's process to respond to and follow up with leads." },
+        { title: "Automations", description: "Set up workflows so every lead gets a response, a next step and an owner." },
+        { title: "Pipeline & contacts", description: "Keep contact details, activity, tasks and ownership together, and see opportunities move through stages." },
+        { title: "Calendars & forms", description: "Capture leads from forms and use calendars to move interested people to a conversation." },
+      ],
+      footnote:
+        "Built for real estate investors, insurance and financial services teams, political and advocacy teams, and agencies and growth teams. See the full platform and plans at axtion.ai.",
+    },
+    closing: (name) => ({
+      heading: "Ready to see Axtion in action?",
+      text: `Request a demo call with ${name} in under a minute.`,
+    }),
+    formTitle: (name) => `Schedule a demo call with ${name}`,
+    formIntro: (name) =>
+      `${name} provides Axtion, a communications CRM. Submit your details below to request a demo call — a ${name} team member will contact you to schedule it.`,
+    submitLabel: "Request my demo call",
+    successMessage: (name) =>
+      `Thank you — we've received your demo request and a ${name} team member will contact you to schedule your call. If you agreed to text messages, reply STOP at any time to opt out.`,
+    termsHeading: "Demo call requests",
+    termsBody: (name) =>
+      `${name} provides Axtion, a communications CRM. Submitting our form is a request to schedule a demo call with ${name}; it is not a purchase and does not commit you to anything. A team member will contact you at the email address or phone number you provide to arrange the call.`,
+    privacyUse:
+      "We use your contact details to respond to your request and to contact you to schedule your demo call. If you separately agree to receive text messages, we use your mobile number to send you marketing and promotional SMS messages about our products and services. Submitting the form does not require you to agree to text messages.",
+  },
 };
 
 const PROFILES: Record<string, LeadGenProfile> = {
