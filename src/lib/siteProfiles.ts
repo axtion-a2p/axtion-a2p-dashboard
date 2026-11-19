@@ -109,7 +109,7 @@ const AXTION: LeadGenProfile = {
   copy: {
     steps: (name) => [
       { title: "Request a demo", description: "Share your name, email and mobile number through our short secure form." },
-      { title: "We reach out", description: `A ${name} team member contacts you to schedule your demo call.` },
+      { title: "We reach out", description: `A team member from ${name} contacts you to schedule your demo call.` },
       { title: "See the platform", description: "On the call we walk through Axtion's inbox, AI follow-up, automations and pipeline, and answer your questions." },
     ],
     services: {
@@ -130,10 +130,10 @@ const AXTION: LeadGenProfile = {
     }),
     formTitle: (name) => `Schedule a demo call with ${name}`,
     formIntro: (name) =>
-      `${name} provides Axtion, a communications CRM. Submit your details below to request a demo call — a ${name} team member will contact you to schedule it.`,
+      `${name} provides Axtion, a communications CRM. Submit your details below to request a demo call — a team member from ${name} will contact you to schedule it.`,
     submitLabel: "Request my demo call",
     successMessage: (name) =>
-      `Thank you — we've received your demo request and a ${name} team member will contact you to schedule your call. If you agreed to text messages, reply STOP at any time to opt out.`,
+      `Thank you — we've received your demo request and a team member from ${name} will contact you to schedule your call. If you agreed to text messages, reply STOP at any time to opt out.`,
     termsHeading: "Demo call requests",
     termsBody: (name) =>
       `${name} provides Axtion, a communications CRM. Submitting our form is a request to schedule a demo call with ${name}; it is not a purchase and does not commit you to anything. A team member will contact you at the email address or phone number you provide to arrange the call.`,
