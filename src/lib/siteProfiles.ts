@@ -142,9 +142,55 @@ const AXTION: LeadGenProfile = {
   },
 };
 
+const WELOVEHOUSES: LeadGenProfile = {
+  kind: "lead-gen",
+  cta: "Get My Cash Offer",
+  badge: "Real Estate Investor",
+  headline: (name) => `Sell your house fast to ${name}`,
+  subtext: (name) =>
+    `${name} is a nationwide real estate investment company that buys properties in any condition. Tell us a little about you and your property, and a team member will follow up with a cash offer.`,
+  about: (name) =>
+    `${name} is a nationwide real estate investment company that buys properties directly, with all-cash offers and flexible closing timelines.`,
+  offering: "a cash offer",
+  smsTopic: "real estate and property offers",
+  disclaimer: "Offers are subject to a review of the property.",
+  optinNote: " Offers are subject to a review of the property.",
+  consentSuffix: " or of selling your property",
+  termsNote:
+    "is not a contract and does not obligate you to sell your property. Any offer is subject to a review of the property and will be provided to you separately.",
+  faqs: (name) => [
+    {
+      q: `Who is ${name}?`,
+      a: `${name} is a real estate investment company. We buy properties directly with our own funds, so there are no agents and no listing process, and we can close in as little as 30 days or on a timeline that works for you.`,
+    },
+    {
+      q: "What types of properties do you buy?",
+      a: "We buy properties in any condition, whatever your situation. Tell us about your property and a team member will follow up.",
+    },
+    {
+      q: "Does submitting the form obligate me to sell?",
+      a: "No. Submitting the form is a request to hear about a cash offer. Any offer is subject to a review of the property, and you decide whether to move forward.",
+    },
+  ],
+  copy: {
+    steps: (name) => [
+      { title: "Tell us about your property", description: "Share your name and contact details through our short secure form." },
+      { title: "We review your request", description: `A team member from ${name} reviews your request and reaches out to you.` },
+      { title: "Receive a cash offer", description: "We follow up with an all-cash offer based on what you tell us. You decide whether to accept." },
+    ],
+    closing: (name) => ({
+      heading: "Ready to sell your house?",
+      text: `Request a cash offer from ${name} in under a minute.`,
+    }),
+    formTitle: (name) => `Request a cash offer from ${name}`,
+    submitLabel: "Request my cash offer",
+  },
+};
+
 const PROFILES: Record<string, LeadGenProfile> = {
   nexgencapllc: NEXGEN,
   axtionllc: AXTION,
+  welovehousesllc: WELOVEHOUSES,
 };
 
 export function siteProfile(subdomain: string | null | undefined): LeadGenProfile | null {
