@@ -22,6 +22,8 @@ export type LeadGenProfile = {
   offering: string;
   /** What marketing texts are about, e.g. "our funding products" (privacy policy). */
   smsTopic: string;
+  /** Replaces "marketing and promotional messages" in the opt-in consent statement, e.g. "political campaign messages". */
+  smsSubject?: string;
   /** Short caveat shown beside the main button and on the form, or "" for none. */
   disclaimer: string;
   /** Sentence appended to the intro on the form page (leading space included), or "". */
@@ -187,10 +189,65 @@ const WELOVEHOUSES: LeadGenProfile = {
   },
 };
 
+const ELECTRIVERA: LeadGenProfile = {
+  kind: "lead-gen",
+  cta: "Join the Campaign",
+  badge: "Political Campaign",
+  headline: (name) => `Stay connected with ${name}`,
+  subtext: (name) =>
+    `${name} is the political campaign of Hector Rivera. Share your details to hear from the campaign about updates, events and voting information. Text messaging is optional.`,
+  about: (name) => `${name} is the political campaign of Hector Rivera.`,
+  offering: "campaign updates",
+  smsTopic: "campaign updates, events and voting information",
+  smsSubject: "political campaign messages",
+  disclaimer: "",
+  optinNote: "",
+  consentSuffix: " or of any contribution",
+  termsNote:
+    "is not a contribution, a pledge, or a commitment, and does not obligate you to do anything.",
+  faqs: (name) => [
+    {
+      q: `Who is ${name}?`,
+      a: `${name} is the political campaign of Hector Rivera. We use this page to let supporters and voters sign up to hear from the campaign.`,
+    },
+    {
+      q: "What will the campaign contact me about?",
+      a: "Campaign updates, event invitations, volunteer opportunities and voting information. Text messaging is a separate, optional choice on the form.",
+    },
+    {
+      q: "Does signing up commit me to anything?",
+      a: "No. Signing up only lets the campaign contact you. It is not a contribution, a pledge or a commitment of any kind.",
+    },
+  ],
+  copy: {
+    steps: (name) => [
+      { title: "Share your details", description: "Enter your name, email and mobile number through our short secure form." },
+      { title: "Choose text messages", description: "Texts are optional. Check the separate consent box only if you want to receive political campaign messages by SMS." },
+      { title: "Hear from the campaign", description: `${name} contacts you with updates, events and voting information. Reply STOP at any time to opt out.` },
+    ],
+    closing: (name) => ({
+      heading: "Want to hear from the campaign?",
+      text: `Sign up to receive updates from ${name} in under a minute.`,
+    }),
+    formTitle: (name) => `Get campaign updates from ${name}`,
+    formIntro: (name) =>
+      `${name} is the political campaign of Hector Rivera. Share your details below to hear from the campaign. Text messages are optional and require a separate consent.`,
+    submitLabel: "Sign me up",
+    successMessage: (name) =>
+      `Thank you — you're signed up with ${name}. If you agreed to text messages, reply STOP at any time to opt out.`,
+    termsHeading: "Campaign updates",
+    termsBody: (name) =>
+      `${name} is the political campaign of Hector Rivera. Submitting our form is a request to hear from the campaign; it is not a contribution, a pledge or a commitment of any kind. The campaign may contact you at the email address or phone number you provide.`,
+    privacyUse:
+      "We use your contact details to respond to your sign-up and to send you campaign updates, event invitations and voting information. If you separately agree to receive text messages, we use your mobile number to send you political campaign messages by SMS. Submitting the form does not require you to agree to text messages.",
+  },
+};
+
 const PROFILES: Record<string, LeadGenProfile> = {
   nexgencapllc: NEXGEN,
   axtionllc: AXTION,
   welovehousesllc: WELOVEHOUSES,
+  electriveraforpublicoffice: ELECTRIVERA,
 };
 
 export function siteProfile(subdomain: string | null | undefined): LeadGenProfile | null {

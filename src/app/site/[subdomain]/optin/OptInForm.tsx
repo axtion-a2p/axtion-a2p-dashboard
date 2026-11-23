@@ -12,6 +12,7 @@ export function OptInForm({
   businessName,
   categories,
   program,
+  smsSubject,
   submitLabel = "Sign up",
   successMessage = "You're signed up. Reply STOP at any time to opt out.",
 }: {
@@ -19,6 +20,8 @@ export function OptInForm({
   businessName: string;
   categories: OptInCategory[];
   program?: string;
+  /** Overrides what kind of messages the marketing consent box names, e.g. "political campaign messages". */
+  smsSubject?: string;
   submitLabel?: string;
   successMessage?: string;
 }) {
@@ -107,7 +110,7 @@ export function OptInForm({
               name={OPT_IN_CATEGORY_FIELD_NAME(category)}
               className="mt-1 h-4 w-4 accent-slate-900"
             />
-            <span>{optInStatement(category, businessName)}</span>
+            <span>{optInStatement(category, businessName, smsSubject)}</span>
           </label>
         ))}
       </div>

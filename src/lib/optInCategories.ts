@@ -47,19 +47,21 @@ export function optInCategoriesFor(useCases: string[], program?: string | null):
 }
 
 /** The "I agree to..." consent sentence for a category, up to "...HELP for help." — callers append a Privacy/Terms reference. */
-export function optInStatement(category: OptInCategory, businessName: string): string {
+export function optInStatement(category: OptInCategory, businessName: string, subjectOverride?: string): string {
   const subject =
-    category === "OTP"
-      ? "one-time passcodes (OTP) and account verification messages"
-      : category === "MARKETING"
-        ? "marketing and promotional messages"
-        : "account notifications and service-related messages";
+    subjectOverride && category === "MARKETING"
+      ? subjectOverride
+      : category === "OTP"
+        ? "one-time passcodes (OTP) and account verification messages"
+        : category === "MARKETING"
+          ? "marketing and promotional messages"
+          : "account notifications and service-related messages";
   return `I agree to receive ${subject} via SMS from ${businessName}. Message frequency varies. Message and data rates may apply. Consent is not a condition of purchase. Reply STOP to opt out, HELP for help.`;
 }
 
 /** Full plain-text disclosure (statement + Privacy/Terms reference) for snapshotting into a consent record. */
-export function optInDisclosureText(category: OptInCategory, businessName: string): string {
-  return `${optInStatement(category, businessName)} See our Privacy Policy and Terms of Service.`;
+export function optInDisclosureText(category: OptInCategory, businessName: string, subjectOverride?: string): string {
+  return `${optInStatement(category, businessName, subjectOverride)} See our Privacy Policy and Terms of Service.`;
 }
 
 export const OPT_IN_CATEGORY_FIELD_NAME = (category: OptInCategory) => `consent_${category.toLowerCase()}`;

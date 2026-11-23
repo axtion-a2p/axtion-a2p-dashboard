@@ -47,7 +47,7 @@ export async function submitOptIn(
 
   const consentText = [
     `I have read and agree to ${subAccount.businessName}'s Privacy Policy and Terms of Service.`,
-    ...acceptedCategories.map((c) => optInDisclosureText(c, subAccount.businessName)),
+    ...acceptedCategories.map((c) => optInDisclosureText(c, subAccount.businessName, siteProfile(subdomain)?.smsSubject)),
   ].join(" ");
 
   await db.optInSubmission.create({

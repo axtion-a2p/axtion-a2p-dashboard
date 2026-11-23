@@ -32,6 +32,7 @@ export default async function OptInPage({ params, searchParams }: PageProps<"/si
           businessName={name}
           categories={categories}
           program={programValue}
+          smsSubject={profile?.smsSubject}
           submitLabel={profile ? (profile.copy?.submitLabel ?? `Get ${profile.offering}`) : "Sign up"}
           successMessage={
             profile
