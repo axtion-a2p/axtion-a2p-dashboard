@@ -6,6 +6,7 @@ import { generateSubAccountToken } from "@/lib/auth";
 import { generateUniqueSubdomain } from "@/lib/generateSubdomain";
 import { subdomainUrl } from "@/lib/subdomain";
 import { standardOptInOutHelp } from "@/lib/campaignTemplate";
+import { resolveCustomerUseCase } from "@/lib/campaignUseCases";
 import { getProviderFor } from "@/lib/providers";
 import { ensureTextGridAccount } from "@/lib/textgridAccount";
 import type { BrandInput } from "@/lib/providers/types";
@@ -170,7 +171,7 @@ export async function submitIntake(_prev: IntakeState, formData: FormData): Prom
     data: {
       subAccountId: subAccount.id,
       provider: d.provider,
-      useCase: d.useCase,
+      useCase: resolveCustomerUseCase(d.useCase),
       description: d.description,
       sampleMessages,
       optInDetails: d.optInDetails,

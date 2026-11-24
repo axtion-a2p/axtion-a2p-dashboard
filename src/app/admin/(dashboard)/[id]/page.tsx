@@ -5,7 +5,7 @@ import { Badge } from "@/components/Badge";
 import { BrandKicker } from "@/components/Brand";
 import { stageColor, healthColor, stageLabel } from "@/lib/status";
 import { subdomainUrl } from "@/lib/subdomain";
-import { CAMPAIGN_USE_CASES } from "@/lib/campaignUseCases";
+import { adminUseCaseOptions } from "@/lib/campaignUseCases";
 import { carrierStatusLabel, carrierStatusColor } from "@/lib/campaignHealth";
 import { credentialsFor, getProviderFor } from "@/lib/providers";
 import { getCurrentAdminUser, getAccessibleSubAccountIds } from "@/lib/auth";
@@ -298,7 +298,7 @@ export default async function AdminSubAccountPage({ params, searchParams }: Page
                       required
                       className="mt-1 w-full rounded-md border border-neutral-300 px-2 py-1.5 text-xs"
                     >
-                      {CAMPAIGN_USE_CASES.map((u) => (
+                      {adminUseCaseOptions(c.useCase).map((u) => (
                         <option key={u} value={u}>
                           {u.replaceAll("_", " ")}
                         </option>

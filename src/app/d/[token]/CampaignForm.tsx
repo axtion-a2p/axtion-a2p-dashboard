@@ -3,7 +3,7 @@
 import { useActionState, useRef } from "react";
 import { submitCampaign, type FormState } from "./actions";
 import { campaignTemplateFor } from "@/lib/campaignTemplate";
-import { CAMPAIGN_USE_CASES } from "@/lib/campaignUseCases";
+import { CUSTOMER_USE_CASES } from "@/lib/campaignUseCases";
 
 const initialState: FormState = {};
 
@@ -61,13 +61,6 @@ export function CampaignForm({
             >
               Use standard Marketing template
             </button>
-            <button
-              type="button"
-              onClick={() => applyTemplate("LOW_VOLUME")}
-              className="text-xs font-medium text-primary underline"
-            >
-              Use standard Low Volume template
-            </button>
           </div>
         )}
       </div>
@@ -96,7 +89,7 @@ export function CampaignForm({
           ref={useCaseRef}
           className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
         >
-          {CAMPAIGN_USE_CASES.map((u) => (
+          {CUSTOMER_USE_CASES.map((u) => (
             <option key={u} value={u}>
               {u.replaceAll("_", " ")}
             </option>

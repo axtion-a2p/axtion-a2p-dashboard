@@ -7,6 +7,7 @@ import { getProviderFor, credentialsFor } from "@/lib/providers";
 import { ensureTextGridAccount } from "@/lib/textgridAccount";
 import type { BrandInput, CampaignInput } from "@/lib/providers/types";
 import { healthForStatus } from "@/lib/campaignHealth";
+import { resolveCustomerUseCase } from "@/lib/campaignUseCases";
 import { auditAndLogInboundRouting } from "@/lib/inboundRoutingCheck";
 
 const brandSchema = z.object({
@@ -192,7 +193,7 @@ export async function submitCampaign(token: string, _prev: FormState, formData: 
 
     const input: CampaignInput = {
       messagingServiceSid: service.sid,
-      useCase: d.useCase,
+      useCase: resolveCustomerUseCase(d.useCase),
       description: d.description,
       sampleMessages,
       optInDetails: d.optInDetails,
@@ -220,7 +221,7 @@ export async function submitCampaign(token: string, _prev: FormState, formData: 
         provider: d.provider,
         providerCampaignId: status.providerCampaignId,
         messagingServiceSid,
-        useCase: d.useCase,
+        useCase: resolveCustomerUseCase(d.useCase),
         description: d.description,
         sampleMessages,
         optInDetails: d.optInDetails,
@@ -370,7 +371,7 @@ export async function submitDraftCampaign(token: string, campaignId: string) {
 
     const input: CampaignInput = {
       messagingServiceSid: service.sid,
-      useCase: campaign.useCase,
+      useCase: resolveCustomerUseCase(campaign.useCase),
       description: campaign.description,
       sampleMessages: campaign.sampleMessages as string[],
       optInDetails: campaign.optInDetails ?? undefined,
@@ -389,6 +390,7 @@ export async function submitDraftCampaign(token: string, campaignId: string) {
     await db.campaign.update({
       where: { id: campaignId },
       data: {
+        useCase: resolveCustomerUseCase(campaign.useCase),
         providerCampaignId: status.providerCampaignId,
         messagingServiceSid,
         stage: status.stage,

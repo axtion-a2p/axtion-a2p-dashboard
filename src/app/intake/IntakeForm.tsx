@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 import { submitIntake, type IntakeState } from "./actions";
 import { BrandKicker } from "@/components/Brand";
-import { CAMPAIGN_USE_CASES } from "@/lib/campaignUseCases";
+import { CUSTOMER_USE_CASES } from "@/lib/campaignUseCases";
 
 const initialState: IntakeState = {};
 
@@ -104,7 +104,7 @@ export function IntakeForm() {
 
         <fieldset className="space-y-4">
           <legend className="text-sm font-medium text-neutral-900">Campaign (held until your brand is approved)</legend>
-          <Select label="Use case" name="useCase" options={CAMPAIGN_USE_CASES} />
+          <Select label="Use case" name="useCase" options={CUSTOMER_USE_CASES} />
           <Textarea label="Campaign description" name="description" required minLength={40} placeholder="What will you text customers about? (min. 40 characters)" />
           <Textarea label="How do customers opt in?" name="optInDetails" required minLength={40} placeholder="e.g. Customers check a box at checkout agreeing to receive SMS updates. (min. 40 characters)" />
           <Textarea
