@@ -22,17 +22,18 @@ import {
   adoptProviderCampaign,
 } from "../actions";
 
-const PROVIDER_LABELS: Record<string, string> = { TEXTGRID: "TextGrid", TWILIO: "Twilio" };
-const PROVIDERS: { value: "TEXTGRID" | "TWILIO"; label: string }[] = [
+const PROVIDER_LABELS: Record<string, string> = { TEXTGRID: "TextGrid", TWILIO: "Twilio", BLOCX: "Blocx" };
+const PROVIDERS: { value: "TEXTGRID" | "TWILIO" | "BLOCX"; label: string }[] = [
   { value: "TEXTGRID", label: "TextGrid" },
   { value: "TWILIO", label: "Twilio" },
+  { value: "BLOCX", label: "Blocx" },
 ];
 
 export default async function AdminSubAccountPage({ params, searchParams }: PageProps<"/admin/[id]">) {
   const { id } = await params;
   const sp = await searchParams;
   const areaCode = typeof sp.areaCode === "string" ? sp.areaCode.trim() : undefined;
-  const searchProvider = (typeof sp.provider === "string" ? sp.provider : "TEXTGRID") as "TEXTGRID" | "TWILIO";
+  const searchProvider = (typeof sp.provider === "string" ? sp.provider : "TEXTGRID") as "TEXTGRID" | "TWILIO" | "BLOCX";
 
   const currentUser = await getCurrentAdminUser();
   if (!currentUser) return null; // layout redirects unauthenticated requests

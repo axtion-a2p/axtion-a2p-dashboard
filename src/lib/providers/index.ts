@@ -1,8 +1,9 @@
+import { BlocxProvider } from "./blocxProvider";
 import { TenDlcProvider } from "./tenDlcProvider";
 import { TextGridProvider } from "./textgridProvider";
 import type { ProviderAdapter } from "./types";
 
-export type ProviderName = "TWILIO" | "TEXTGRID";
+export type ProviderName = "TWILIO" | "TEXTGRID" | "BLOCX";
 
 function required(name: string): string {
   const value = process.env[name];
@@ -55,6 +56,16 @@ export function getProvider(
     });
   }
 
+  if (provider === "BLOCX") {
+    // Blocx has no per-client accounts: one platform key pair (Vercel env vars)
+    // serves every sub-account, and the overrides are intentionally ignored.
+    return new BlocxProvider({
+      accessKeyId: required("BLOCX_ACCESS_KEY_ID"),
+      secretAccessKey: required("BLOCX_SECRET_ACCESS_KEY"),
+      apiBase: process.env.BLOCX_API_BASE || "https://api.otterblocx.com",
+    });
+  }
+
   return new TextGridProvider({
     accountSid: overrideSid || required("TEXTGRID_ACCOUNT_SID"),
     authToken: overrideToken || required("TEXTGRID_AUTH_TOKEN"),
@@ -82,6 +93,8 @@ export function credentialsFor(
   sa: SubAccountCredentialFields,
   provider: ProviderName
 ): { sid: string | null; token: string | null } {
+  // Blocx uses the platform-wide key pair only; there is no per-sub-account credential.
+  if (provider === "BLOCX") return { sid: null, token: null };
   const sid = provider === "TWILIO" ? sa.twilioAccountSid : sa.textgridAccountSid;
   const token = provider === "TWILIO" ? sa.twilioAuthToken : sa.textgridAuthToken;
   if (sid) return { sid, token };

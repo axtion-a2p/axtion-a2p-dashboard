@@ -1,5 +1,5 @@
 // Data model for the 10DLC A2P registration & monitoring dashboard.
-// Two providers are supported per sub-account: Twilio and TextGrid.
+// Three providers are supported per sub-account: Twilio, TextGrid and Blocx.
 
 generator client {
   provider = "prisma-client"
@@ -13,6 +13,7 @@ datasource db {
 enum Provider {
   TWILIO
   TEXTGRID
+  BLOCX
 }
 
 enum BrandStage {

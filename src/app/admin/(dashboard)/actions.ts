@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { destroyAdminSession, requireAdmin } from "@/lib/auth";
-import { credentialsFor, getProvider, getProviderFor } from "@/lib/providers";
+import { credentialsFor, getProvider, getProviderFor, type ProviderName } from "@/lib/providers";
 import type { CampaignInput } from "@/lib/providers/types";
 import { generateUniqueSubdomain } from "@/lib/generateSubdomain";
 import { subdomainUrl } from "@/lib/subdomain";
@@ -25,7 +25,7 @@ export async function syncSubAccount(subAccountId: string) {
     include: { brands: true, campaigns: true },
   });
 
-  function providerFor(name: "TWILIO" | "TEXTGRID") {
+  function providerFor(name: ProviderName) {
     return getProviderFor(subAccount, name);
   }
 
@@ -84,7 +84,7 @@ export async function syncSubAccount(subAccountId: string) {
 /** Pull a provider's current phone number list into our local table (unassigned numbers). */
 export async function syncPhoneNumbers(subAccountId: string, formData: FormData) {
   await requireAdmin();
-  const providerName = String(formData.get("provider")) as "TWILIO" | "TEXTGRID";
+  const providerName = String(formData.get("provider")) as ProviderName;
   const subAccount = await db.subAccount.findUniqueOrThrow({ where: { id: subAccountId } });
 
   try {
@@ -141,7 +141,7 @@ export async function assignNumberToCampaign(subAccountId: string, formData: For
 /** Buys a specific number found via searchAvailableNumbers, and optionally assigns it straight to a campaign. */
 export async function purchaseAndAssignNumber(subAccountId: string, formData: FormData) {
   await requireAdmin();
-  const providerName = String(formData.get("provider")) as "TWILIO" | "TEXTGRID";
+  const providerName = String(formData.get("provider")) as ProviderName;
   const e164 = String(formData.get("e164"));
   const campaignId = String(formData.get("campaignId") || "");
 
@@ -363,7 +363,7 @@ export async function setProviderCredentials(subAccountId: string, formData: For
  */
 export async function adoptProviderBrand(subAccountId: string, formData: FormData) {
   await requireAdmin();
-  const provider = String(formData.get("provider")) as "TWILIO" | "TEXTGRID";
+  const provider = String(formData.get("provider")) as ProviderName;
   const providerBrandId = String(formData.get("providerBrandId") || "").trim();
   if (!providerBrandId) return;
 
@@ -411,7 +411,7 @@ export async function adoptProviderBrand(subAccountId: string, formData: FormDat
  */
 export async function adoptProviderCampaign(subAccountId: string, formData: FormData) {
   await requireAdmin();
-  const provider = String(formData.get("provider")) as "TWILIO" | "TEXTGRID";
+  const provider = String(formData.get("provider")) as ProviderName;
   const messagingServiceSid = String(formData.get("messagingServiceSid") || "").trim();
   const providerCampaignId = String(formData.get("providerCampaignId") || "").trim();
   if (!messagingServiceSid || !providerCampaignId) return;
